@@ -53,19 +53,27 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn rotate(&mut self, pivot: &Point, (theta, phi): (f64, f64)) {
-        let (sin_theta, cos_theta) = theta.sin_cos();
-        let (sin_phi, cos_phi) = phi.sin_cos();
+    pub fn rotate(&mut self, pivot: &Point, (xrot, yrot, zrot): (f64, f64, f64)) {
+        let (sin_xrot, cos_xrot) = xrot.sin_cos();
+        let (sin_yrot, cos_yrot) = yrot.sin_cos();
+        let (sin_zrot, cos_zrot) = zrot.sin_cos();
         // println!("{}", self.vertices.len());
         for v in &mut self.vertices {
             let prev = v.clone() - pivot.clone();
             let mut new = prev.clone();
-            new.0 = prev.0 * cos_theta + prev.2 * sin_theta;
-            new.2 = -prev.0 * sin_theta + prev.2 * cos_theta;
+            // y-rotation
+            new.0 = prev.0 * cos_yrot + prev.2 * sin_yrot;
+            new.2 = -prev.0 * sin_yrot + prev.2 * cos_yrot;
             let prev = new.clone();
             let mut new = prev.clone();
-            new.1 = prev.1 * cos_phi - prev.2 * sin_phi;
-            new.2 = prev.1 * sin_phi + prev.2 * cos_phi;
+            // x-rotation
+            new.1 = prev.1 * cos_xrot - prev.2 * sin_xrot;
+            new.2 = prev.1 * sin_xrot + prev.2 * cos_xrot;
+            let prev = new.clone();
+            let mut new = prev.clone();
+            // z-rotation
+            new.0 = prev.0 * cos_zrot + prev.1 * sin_zrot;
+            new.1 = -prev.0 * sin_zrot + prev.1 * cos_zrot;
             v.set(new + pivot.clone());
         }
     }
