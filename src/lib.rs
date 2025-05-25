@@ -6,6 +6,13 @@ pub struct Display {
     pixels: Vec<Vec<Option<f64>>>,
 }
 
+#[derive(Copy, Clone)]
+enum TextColor {
+    Red,
+    Cyan,
+    Green,
+}
+
 impl Display {
     pub fn new(x_size: usize, y_size: usize) -> Display {
         let pixels: Vec<Vec<Option<f64>>> = vec![vec![None; x_size]; y_size];
@@ -66,21 +73,30 @@ impl Display {
         }
     }
 
+    fn colored(text: &str, color: TextColor) {
+        match color {
+            TextColor::Red => print!("\x1b[31m{}\x1b[0m", text),
+            TextColor::Cyan => print!("\x1b[36m{}\x1b[0m", text),
+            TextColor::Green => print!("\x1b[92m{}\x1b[0m", text),
+        }
+    }
+
     pub fn render(&mut self, shape: &shapes::Shape) {
         self.project(&shape);
         Self::clear_screen();
+        let color = TextColor::Green;
         for row in &self.pixels {
             for z in row {
                 match z {
                     Some(p) => {
                         if *p > 10.0 {
-                            print!("#");
+                            Self::colored("#", color);
                         } else if *p > 5.0 {
-                            print!("/");
+                            Self::colored("|", color);
                         } else if *p > 3.0 {
-                            print!("-");
+                            Self::colored("-", color);
                         } else {
-                            print!(".");
+                            Self::colored(".", color);
                         }
                     }
                     None => {

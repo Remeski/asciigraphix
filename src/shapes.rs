@@ -112,4 +112,41 @@ impl Shape {
             center: None,
         }
     }
+
+    pub fn generate_cube(center: Point, length: f64) -> Shape {
+        let mut vertices: Vec<Point> = Vec::new();
+        let mut edges: Vec<Edge> = Vec::new();
+
+        let half = length / 2.0;
+        // bottom
+        vertices.push(center.clone() + Point(-half, -half, -half)); // 0
+        vertices.push(center.clone() + Point(-half, -half, half)); // 1
+        vertices.push(center.clone() + Point(half, -half, half)); // 2
+        vertices.push(center.clone() + Point(half, -half, -half)); // 3
+        edges.push(Edge(0, 1));
+        edges.push(Edge(1, 2));
+        edges.push(Edge(2, 3));
+        edges.push(Edge(0, 3));
+        // top
+        vertices.push(center.clone() + Point(-half, half, -half)); // 4
+        vertices.push(center.clone() + Point(-half, half, half)); // 5
+        vertices.push(center.clone() + Point(half, half, half)); // 6
+        vertices.push(center.clone() + Point(half, half, -half)); // 7
+        edges.push(Edge(4, 5));
+        edges.push(Edge(5, 6));
+        edges.push(Edge(6, 7));
+        edges.push(Edge(4, 7));
+        // left
+        edges.push(Edge(0, 4));
+        edges.push(Edge(1, 5));
+        // right
+        edges.push(Edge(2, 6));
+        edges.push(Edge(3, 7));
+
+        Shape {
+            vertices,
+            edges,
+            center: Some(center),
+        }
+    }
 }
