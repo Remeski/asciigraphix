@@ -1,28 +1,4 @@
-#[derive(Debug, Clone, Copy)]
-pub struct Point(pub f64, pub f64, pub f64);
-
 pub mod shapes;
-
-impl Point {
-    fn set(&mut self, p: Point) {
-        self.0 = p.0;
-        self.1 = p.1;
-        self.2 = p.2;
-    }
-}
-
-impl std::ops::Add for Point {
-    type Output = Self;
-    fn add(self, a: Self) -> Self {
-        Self(self.0 + a.0, self.1 + a.1, self.2 + a.2)
-    }
-}
-impl std::ops::Sub for Point {
-    type Output = Self;
-    fn sub(self, a: Self) -> Self {
-        Self(self.0 - a.0, self.1 - a.1, self.2 - a.2)
-    }
-}
 
 pub struct Display {
     x_size: usize,
@@ -44,29 +20,48 @@ impl Display {
         print!("\x1B[2J\x1B[1;1H");
     }
 
+    fn write_pixel(&mut self, x: f64, y: f64, value: f64) {
+        let xpixel = (x + (self.x_size as f64) / 2.0) as isize;
+        let ypixel = (y + (self.y_size as f64) / 2.0) as isize;
+        if (xpixel < 0) || (ypixel < 0) {
+            return;
+        }
+        let x = xpixel as usize;
+        let y = ypixel as usize;
+        if (x >= self.x_size) || (y >= self.y_size) {
+            return;
+        }
+        let z = value;
+        let cur_z = self.pixels[y][x];
+        if let Some(k) = cur_z {
+            if z > k {
+                self.pixels[y][x] = Some(z);
+            }
+        } else {
+            self.pixels[y][x] = Some(z);
+        }
+    }
+
     fn project(&mut self, shape: &shapes::Shape) {
         self.pixels = vec![vec![None; self.x_size]; self.y_size];
         let vertices = &shape.vertices;
+        let edges = &shape.edges;
 
-        for v in vertices {
-            let x = (v.0 + (self.x_size as f64) / 2.0) as isize;
-            let y = (v.1 + (self.y_size as f64) / 2.0) as isize;
-            if (x < 0) || (y < 0) {
-                continue;
-            }
-            let x = x as usize;
-            let y = y as usize;
-            if (x >= self.x_size) || (y >= self.y_size) {
-                continue;
-            }
-            let z = v.2;
-            let cur_z = self.pixels[y][x];
-            if let Some(k) = cur_z {
-                if z > k {
-                    self.pixels[y][x] = Some(z);
-                }
-            } else {
-                self.pixels[y][x] = Some(z);
+        for vertex in vertices {
+            self.write_pixel(vertex.0, vertex.1, vertex.2);
+        }
+
+        for edge in edges {
+            let start = vertices[edge.0].clone();
+            let end = vertices[edge.1].clone();
+
+            let delta = end.clone() - start.clone();
+            // let delta_unit = delta.clone() / delta.magnitude();
+
+            const VERTEX_DENSITY: usize = 100;
+            for c in 0..VERTEX_DENSITY {
+                let p = start.clone() + delta.clone() * (c as f64 / VERTEX_DENSITY as f64);
+                self.write_pixel(p.0, p.1, p.2);
             }
         }
     }
