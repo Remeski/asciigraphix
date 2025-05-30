@@ -3,17 +3,6 @@ const VERTEX_DENSITY: usize = 100;
 #[derive(Debug, Clone)]
 pub struct Point(pub f64, pub f64, pub f64);
 
-impl Point {
-    fn set(&mut self, p: Point) {
-        self.0 = p.0;
-        self.1 = p.1;
-        self.2 = p.2;
-    }
-    pub fn magnitude(&self) -> f64 {
-        (self.0.powi(2) + self.1.powi(2) + self.2.powi(2)).sqrt()
-    }
-}
-
 impl std::ops::Add for Point {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -39,6 +28,51 @@ impl std::ops::Mul<f64> for Point {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self::Output {
         Self(self.0 * rhs, self.1 * rhs, self.2 * rhs)
+    }
+}
+
+impl Point {
+    fn set(&mut self, p: Point) {
+        self.0 = p.0;
+        self.1 = p.1;
+        self.2 = p.2;
+    }
+
+    pub fn magnitude(&self) -> f64 {
+        (self.0.powi(2) + self.1.powi(2) + self.2.powi(2)).sqrt()
+    }
+
+    pub fn dot(&self, rhs: &Self) -> f64 {
+        self.0 * rhs.0 + self.1 * rhs.1 + self.2 * rhs.2
+    }
+
+    pub fn unit(&self) -> Point {
+        self.clone() / self.magnitude()
+    }
+
+    pub fn cross(&self, other: &Self) -> Self {
+        Self(
+            self.1 * other.2 - self.2 * other.1,
+            self.2 * other.0 - self.0 * other.2,
+            self.0 * other.1 - self.1 * other.0,
+        )
+    }
+
+    pub fn orthogonal_basis(&self) -> (Self, Self, Self) {
+        // Pick vector not parallel to v
+        let a = if self.0.abs() < self.1.abs() && self.0.abs() < self.2.abs() {
+            Self(1.0, 0.0, 0.0)
+        } else if self.1.abs() < self.2.abs() {
+            Self(0.0, 1.0, 0.0)
+        } else {
+            Self(0.0, 0.0, 1.0)
+        };
+
+        let u = self.cross(&a).unit();
+        let w = self.cross(&u).unit();
+        let vecs = (self.clone(), u, w);
+        dbg!(&vecs);
+        vecs
     }
 }
 
@@ -147,6 +181,26 @@ impl Shape {
             vertices,
             edges,
             center: Some(center),
+        }
+    }
+    pub fn generate_grid(length: usize) -> Shape {
+        let mut vertices: Vec<Point> = Vec::new();
+        for x in 0..length {
+            vertices.push(Point(-(x as f64), 0.0, 0.0));
+            vertices.push(Point(x as f64, 0.0, 0.0));
+        }
+        for y in 0..length {
+            vertices.push(Point(0.0, -(y as f64), 0.0));
+            vertices.push(Point(0.0, y as f64, 0.0));
+        }
+        for z in 0..length {
+            vertices.push(Point(0.0, 0.0, -(z as f64)));
+            vertices.push(Point(0.0, 0.0, z as f64));
+        }
+        Shape {
+            vertices,
+            edges: Vec::new(),
+            center: None,
         }
     }
 }
