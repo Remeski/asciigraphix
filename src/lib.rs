@@ -1,4 +1,4 @@
-use shapes::{Edge, Point};
+use shapes::{Edge, Face, Point};
 
 pub mod shapes;
 
@@ -99,10 +99,19 @@ impl Display {
         }
     }
 
+    fn project_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
+        for face in faces {
+            let vertex_1 = vertices.get(face.0);
+            let vertex_2 = vertices.get(face.1);
+            let vertex_3 = vertices.get(face.2);
+        }
+    }
+
     fn project(&mut self, shape: &shapes::Shape) {
         self.pixels = vec![vec![None; self.x_size]; self.y_size];
         self.project_vertices(&shape.vertices);
         self.project_edges(&shape.vertices, &shape.edges);
+        self.project_faces(&shape.vertices, &shape.faces);
     }
 
     fn colored(text: &str, color: TextColor) {

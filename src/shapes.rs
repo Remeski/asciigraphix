@@ -1,12 +1,23 @@
 const VERTEX_DENSITY: usize = 100;
 
-#[derive(Debug, Clone)]
+// Really whis is a 3D vector...
+#[derive(Debug, Clone, Copy)]
 pub struct Point(pub f64, pub f64, pub f64);
+
+#[derive(Debug, Clone, Copy)]
+pub struct Point4(pub f64, pub f64, pub f64, pub f64);
 
 impl std::ops::Add for Point {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         Self(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2)
+    }
+}
+
+impl std::ops::Add for Point4 {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Self(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2, self.3 + rhs.3)
     }
 }
 
@@ -17,6 +28,13 @@ impl std::ops::Sub for Point {
     }
 }
 
+impl std::ops::Sub for Point4 {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self {
+        Self(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2, self.3 - rhs.3)
+    }
+}
+
 impl std::ops::Div<f64> for Point {
     type Output = Self;
     fn div(self, rhs: f64) -> Self {
@@ -24,10 +42,24 @@ impl std::ops::Div<f64> for Point {
     }
 }
 
+impl std::ops::Div<f64> for Point4 {
+    type Output = Self;
+    fn div(self, rhs: f64) -> Self {
+        Self(self.0 / rhs, self.1 / rhs, self.2 / rhs, self.3 / rhs)
+    }
+}
+
 impl std::ops::Mul<f64> for Point {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self::Output {
         Self(self.0 * rhs, self.1 * rhs, self.2 * rhs)
+    }
+}
+
+impl std::ops::Mul<f64> for Point4 {
+    type Output = Self;
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self(self.0 * rhs, self.1 * rhs, self.2 * rhs, self.3 * rhs)
     }
 }
 
@@ -76,14 +108,41 @@ impl Point {
     }
 }
 
+impl Point4 {
+    pub fn magnitude(&self) -> f64 {
+        (self.0.powi(2) + self.1.powi(2) + self.2.powi(2) + self.3.powi(2)).sqrt()
+    }
+
+    pub fn dot(&self, rhs: &Self) -> f64 {
+        self.0 * rhs.0 + self.1 * rhs.1 + self.2 * rhs.2 + self.3 * rhs.3
+    }
+
+    pub fn unit(&self) -> Point4 {
+        self.clone() / self.magnitude()
+    }
+}
+
+// This holds the indexes of two points forming an edge.
 #[derive(Debug, Clone)]
 pub struct Edge(pub usize, pub usize);
+
+// This holds the indexes of points forming a face.
+#[derive(Debug, Clone)]
+pub struct Face(pub usize, pub usize, pub usize);
 
 #[derive(Debug)]
 pub struct Shape {
     pub vertices: Vec<Point>,
     pub edges: Vec<Edge>,
+    pub faces: Vec<Face>,
     pub center: Option<Point>,
+}
+
+#[derive(Debug)]
+pub struct Shape4 {
+    pub vertices: Vec<Point4>,
+    pub edges: Vec<Edge>,
+    pub center: Option<Point4>,
 }
 
 impl Shape {
@@ -114,11 +173,14 @@ impl Shape {
     pub fn combine(&self, s2: &Self) -> Self {
         let mut vertices = self.vertices.clone();
         let mut edges = self.edges.clone();
+        let mut faces = self.faces.clone();
         vertices.append(&mut s2.vertices.clone());
         edges.append(&mut s2.edges.clone());
+        faces.append(&mut s2.faces.clone());
         Shape {
             vertices,
             edges,
+            faces,
             center: None,
         }
     }
@@ -135,6 +197,7 @@ impl Shape {
         Shape {
             vertices,
             edges: Vec::new(),
+            faces: Vec::new(),
             center: Some(center),
         }
     }
@@ -143,6 +206,7 @@ impl Shape {
         Shape {
             vertices: vec![start, end],
             edges: vec![Edge(0, 1)],
+            faces: Vec::new(),
             center: None,
         }
     }
@@ -150,6 +214,7 @@ impl Shape {
     pub fn generate_cube(center: Point, length: f64) -> Shape {
         let mut vertices: Vec<Point> = Vec::new();
         let mut edges: Vec<Edge> = Vec::new();
+        let mut faces: Vec<Face> = Vec::new();
 
         let half = length / 2.0;
         // bottom
@@ -177,12 +242,16 @@ impl Shape {
         edges.push(Edge(2, 6));
         edges.push(Edge(3, 7));
 
+        faces.push(Face(0, 1, 2));
+
         Shape {
             vertices,
             edges,
+            faces,
             center: Some(center),
         }
     }
+
     pub fn generate_grid(length: usize) -> Shape {
         let mut vertices: Vec<Point> = Vec::new();
         for x in 0..length {
@@ -200,7 +269,104 @@ impl Shape {
         Shape {
             vertices,
             edges: Vec::new(),
+            faces: Vec::new(),
             center: None,
+        }
+    }
+
+    pub fn generate_parallelepiped(start: Point, a: Point, b: Point, c: Point) -> Shape {
+        let mut vertices: Vec<Point> = Vec::new();
+        let mut edges: Vec<Edge> = Vec::new();
+        vertices.push(start); // 0
+        vertices.push(start + a); // 1
+        edges.push(Edge(0,1));
+
+        vertices.push(start + c); // 2
+        vertices.push(start + c + a); // 3
+        edges.push(Edge(2,3));
+        edges.push(Edge(0,2));
+        edges.push(Edge(1,3));
+
+        vertices.push(start + b); // 4
+        vertices.push(start + b + a); // 5
+        edges.push(Edge(4,5));
+
+        vertices.push(start + b + c); // 6
+        vertices.push(start + b + c + a); // 7
+        edges.push(Edge(6,7));
+        edges.push(Edge(4,6));
+        edges.push(Edge(5,7));
+
+        edges.push(Edge(0,4));
+        edges.push(Edge(1,5));
+        edges.push(Edge(2,6));
+        edges.push(Edge(3,7));
+
+        Shape {
+            vertices,
+            edges,
+            faces: Vec::new(),
+            center: Some(start)
+        }
+    }
+
+}
+
+impl Shape4 {
+    pub fn generate_4d_paralellepiped(start: Point4, a: Point4, b: Point4, c: Point4, d: Point4) -> Shape4 {
+        let mut vertices: Vec<Point4> = Vec::new();
+        let mut edges: Vec<Edge> = Vec::new();
+
+        vertices.push(start); // 0
+        vertices.push(start + a); // 1
+        vertices.push(start + b); // 2
+        vertices.push(start + c); // 3
+        vertices.push(start + d); // 4
+        edges.push(Edge(0,1));
+        edges.push(Edge(0,2));
+        edges.push(Edge(0,3));
+        edges.push(Edge(0,4));
+
+        vertices.push(start + a + d); // 5
+        vertices.push(start + a + b); // 6
+        vertices.push(start + a + c); // 7
+        vertices.push(start + b + c); // 8
+        vertices.push(start + b + d); // 9
+        vertices.push(start + c + d); // 10
+        edges.push(Edge(1,5)); // a to a + d
+        edges.push(Edge(1,6)); // a to a + b
+        edges.push(Edge(1,7)); // a to a + c
+        edges.push(Edge(2,6)); // b to a + b
+        edges.push(Edge(2,8)); // b to b + c
+        edges.push(Edge(2,9)); // b to b + d
+        edges.push(Edge(3,7)); // c to a + c
+        edges.push(Edge(3,8)); // c to b + c
+        edges.push(Edge(3,9)); // c to c + d
+        edges.push(Edge(4,5)); // d to a + d
+        edges.push(Edge(4,9)); // d to b + d
+        edges.push(Edge(4,10)); // d to c + d
+
+        vertices.push(start + a + b + c); // 11
+        vertices.push(start + a + b + d); // 12
+        vertices.push(start + a + c + d); // 13
+        vertices.push(start + b + c + d); // 14
+        edges.push(Edge(5,12)); // a + d to a + b + d
+        edges.push(Edge(5,13)); // a + d to a + c + d
+        edges.push(Edge(6,11)); // a + b to a + b + c
+        edges.push(Edge(6,12)); // a + b to a + b + d
+        edges.push(Edge(7,11)); // a + c to a + b + c
+        edges.push(Edge(7,14)); // a + c to b + c + d
+        edges.push(Edge(8,11)); // b + c to a + b + c
+        edges.push(Edge(8,14)); // b + c to b + c + d
+        edges.push(Edge(9,12)); // b + d to a + b + d
+        edges.push(Edge(9,14)); // b + d to b + c + d
+        edges.push(Edge(10,13)); // c + d to a + c + d
+        edges.push(Edge(10,14)); // c + d to b + c + d
+
+        Shape4 {
+            vertices,
+            edges,
+            center: None
         }
     }
 }
