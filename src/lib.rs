@@ -134,7 +134,7 @@ impl Display {
                         if *p < 10.0 {
                             Self::colored("#", color);
                         } else if *p < 30.0 {
-                            Self::colored("|", color);
+                            Self::colored("*", color);
                         } else if *p < 50.0 {
                             Self::colored("-", color);
                         } else {

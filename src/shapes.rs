@@ -17,7 +17,12 @@ impl std::ops::Add for Point {
 impl std::ops::Add for Point4 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        Self(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2, self.3 + rhs.3)
+        Self(
+            self.0 + rhs.0,
+            self.1 + rhs.1,
+            self.2 + rhs.2,
+            self.3 + rhs.3,
+        )
     }
 }
 
@@ -31,7 +36,12 @@ impl std::ops::Sub for Point {
 impl std::ops::Sub for Point4 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
-        Self(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2, self.3 - rhs.3)
+        Self(
+            self.0 - rhs.0,
+            self.1 - rhs.1,
+            self.2 - rhs.2,
+            self.3 - rhs.3,
+        )
     }
 }
 
@@ -109,6 +119,13 @@ impl Point {
 }
 
 impl Point4 {
+    pub fn set(&mut self, p: Point4) {
+        self.0 = p.0;
+        self.1 = p.1;
+        self.2 = p.2;
+        self.3 = p.3;
+    }
+
     pub fn magnitude(&self) -> f64 {
         (self.0.powi(2) + self.1.powi(2) + self.2.powi(2) + self.3.powi(2)).sqrt()
     }
@@ -279,41 +296,46 @@ impl Shape {
         let mut edges: Vec<Edge> = Vec::new();
         vertices.push(start); // 0
         vertices.push(start + a); // 1
-        edges.push(Edge(0,1));
+        edges.push(Edge(0, 1));
 
         vertices.push(start + c); // 2
         vertices.push(start + c + a); // 3
-        edges.push(Edge(2,3));
-        edges.push(Edge(0,2));
-        edges.push(Edge(1,3));
+        edges.push(Edge(2, 3));
+        edges.push(Edge(0, 2));
+        edges.push(Edge(1, 3));
 
         vertices.push(start + b); // 4
         vertices.push(start + b + a); // 5
-        edges.push(Edge(4,5));
+        edges.push(Edge(4, 5));
 
         vertices.push(start + b + c); // 6
         vertices.push(start + b + c + a); // 7
-        edges.push(Edge(6,7));
-        edges.push(Edge(4,6));
-        edges.push(Edge(5,7));
+        edges.push(Edge(6, 7));
+        edges.push(Edge(4, 6));
+        edges.push(Edge(5, 7));
 
-        edges.push(Edge(0,4));
-        edges.push(Edge(1,5));
-        edges.push(Edge(2,6));
-        edges.push(Edge(3,7));
+        edges.push(Edge(0, 4));
+        edges.push(Edge(1, 5));
+        edges.push(Edge(2, 6));
+        edges.push(Edge(3, 7));
 
         Shape {
             vertices,
             edges,
             faces: Vec::new(),
-            center: Some(start)
+            center: Some(start),
         }
     }
-
 }
 
 impl Shape4 {
-    pub fn generate_4d_paralellepiped(start: Point4, a: Point4, b: Point4, c: Point4, d: Point4) -> Shape4 {
+    pub fn generate_4d_paralellepiped(
+        start: Point4,
+        a: Point4,
+        b: Point4,
+        c: Point4,
+        d: Point4,
+    ) -> Shape4 {
         let mut vertices: Vec<Point4> = Vec::new();
         let mut edges: Vec<Edge> = Vec::new();
 
@@ -322,10 +344,10 @@ impl Shape4 {
         vertices.push(start + b); // 2
         vertices.push(start + c); // 3
         vertices.push(start + d); // 4
-        edges.push(Edge(0,1));
-        edges.push(Edge(0,2));
-        edges.push(Edge(0,3));
-        edges.push(Edge(0,4));
+        edges.push(Edge(0, 1));
+        edges.push(Edge(0, 2));
+        edges.push(Edge(0, 3));
+        edges.push(Edge(0, 4));
 
         vertices.push(start + a + d); // 5
         vertices.push(start + a + b); // 6
@@ -333,40 +355,108 @@ impl Shape4 {
         vertices.push(start + b + c); // 8
         vertices.push(start + b + d); // 9
         vertices.push(start + c + d); // 10
-        edges.push(Edge(1,5)); // a to a + d
-        edges.push(Edge(1,6)); // a to a + b
-        edges.push(Edge(1,7)); // a to a + c
-        edges.push(Edge(2,6)); // b to a + b
-        edges.push(Edge(2,8)); // b to b + c
-        edges.push(Edge(2,9)); // b to b + d
-        edges.push(Edge(3,7)); // c to a + c
-        edges.push(Edge(3,8)); // c to b + c
-        edges.push(Edge(3,9)); // c to c + d
-        edges.push(Edge(4,5)); // d to a + d
-        edges.push(Edge(4,9)); // d to b + d
-        edges.push(Edge(4,10)); // d to c + d
+        edges.push(Edge(1, 5)); // a to a + d
+        edges.push(Edge(1, 6)); // a to a + b
+        edges.push(Edge(1, 7)); // a to a + c
+        edges.push(Edge(2, 6)); // b to a + b
+        edges.push(Edge(2, 8)); // b to b + c
+        edges.push(Edge(2, 9)); // b to b + d
+        edges.push(Edge(3, 7)); // c to a + c
+        edges.push(Edge(3, 8)); // c to b + c
+        edges.push(Edge(3, 10)); // c to c + d
+        edges.push(Edge(4, 5)); // d to a + d
+        edges.push(Edge(4, 9)); // d to b + d
+        edges.push(Edge(4, 10)); // d to c + d
 
         vertices.push(start + a + b + c); // 11
         vertices.push(start + a + b + d); // 12
         vertices.push(start + a + c + d); // 13
         vertices.push(start + b + c + d); // 14
-        edges.push(Edge(5,12)); // a + d to a + b + d
-        edges.push(Edge(5,13)); // a + d to a + c + d
-        edges.push(Edge(6,11)); // a + b to a + b + c
-        edges.push(Edge(6,12)); // a + b to a + b + d
-        edges.push(Edge(7,11)); // a + c to a + b + c
-        edges.push(Edge(7,14)); // a + c to b + c + d
-        edges.push(Edge(8,11)); // b + c to a + b + c
-        edges.push(Edge(8,14)); // b + c to b + c + d
-        edges.push(Edge(9,12)); // b + d to a + b + d
-        edges.push(Edge(9,14)); // b + d to b + c + d
-        edges.push(Edge(10,13)); // c + d to a + c + d
-        edges.push(Edge(10,14)); // c + d to b + c + d
+        edges.push(Edge(5, 12)); // a + d to a + b + d
+        edges.push(Edge(5, 13)); // a + d to a + c + d
+        edges.push(Edge(6, 11)); // a + b to a + b + c
+        edges.push(Edge(6, 12)); // a + b to a + b + d
+        edges.push(Edge(7, 11)); // a + c to a + b + c
+        edges.push(Edge(7, 14)); // a + c to b + c + d
+        edges.push(Edge(8, 11)); // b + c to a + b + c
+        edges.push(Edge(8, 14)); // b + c to b + c + d
+        edges.push(Edge(9, 12)); // b + d to a + b + d
+        edges.push(Edge(9, 14)); // b + d to b + c + d
+        edges.push(Edge(10, 13)); // c + d to a + c + d
+        edges.push(Edge(10, 14)); // c + d to b + c + d
+
+        vertices.push(start + a + b + c + d); // 15
+        edges.push(Edge(11,15));
+        edges.push(Edge(12,15));
+        edges.push(Edge(13,15));
+        edges.push(Edge(14,15));
 
         Shape4 {
             vertices,
             edges,
-            center: None
+            center: None,
+        }
+    }
+
+    pub fn rotate(
+        &mut self,
+        pivot: &Point4,
+        (xyrot, yzrot, xzrot, wxrot, wyrot, wzrot): (f64, f64, f64, f64, f64, f64),
+    ) {
+        let (sin_xyrot, cos_xyrot) = xyrot.sin_cos();
+        let (sin_yzrot, cos_yzrot) = yzrot.sin_cos();
+        let (sin_xzrot, cos_xzrot) = xzrot.sin_cos();
+        let (sin_wxrot, cos_wxrot) = wxrot.sin_cos();
+        let (sin_wyrot, cos_wyrot) = wyrot.sin_cos();
+        let (sin_wzrot, cos_wzrot) = wzrot.sin_cos();
+        // println!("{}", self.vertices.len());
+        for v in &mut self.vertices {
+            let prev = v.clone() - pivot.clone();
+            let mut new = prev.clone();
+            // xz-rotation
+            new.0 = prev.0 * cos_xzrot + prev.2 * sin_xzrot;
+            new.2 = -prev.0 * sin_xzrot + prev.2 * cos_xzrot;
+            let prev = new.clone();
+            let mut new = prev.clone();
+            // yz-rotation
+            new.1 = prev.1 * cos_yzrot - prev.2 * sin_yzrot;
+            new.2 = prev.1 * sin_yzrot + prev.2 * cos_yzrot;
+            let prev = new.clone();
+            let mut new = prev.clone();
+            // xy-rotation
+            new.0 = prev.0 * cos_xyrot + prev.1 * sin_xyrot;
+            new.1 = -prev.0 * sin_xyrot + prev.1 * cos_xyrot;
+            let prev = new.clone();
+            let mut new = prev.clone();
+            // wx-rotation
+            new.0 = prev.0 * cos_wxrot + prev.3 * sin_wxrot;
+            new.3 = -prev.0 * sin_wxrot + prev.3 * cos_wxrot;
+            let prev = new.clone();
+            let mut new = prev.clone();
+            // wy-rotation
+            new.1 = prev.1 * cos_wyrot + prev.3 * sin_wyrot;
+            new.3 = -prev.1 * sin_wyrot + prev.3 * cos_wyrot;
+            let prev = new.clone();
+            let mut new = prev.clone();
+            // wz-rotation
+            new.2 = prev.2 * cos_wzrot + prev.3 * sin_wzrot;
+            new.3 = -prev.2 * sin_wzrot + prev.3 * cos_wzrot;
+            v.set(new + pivot.clone());
+        }
+    }
+
+    pub fn project_to_3d(&self) -> Shape {
+        let mut vertices: Vec<Point> = Vec::new();
+
+        for v in &self.vertices {
+            vertices.push(Point(v.0, v.1, v.2))
+        }
+
+        Shape {
+            vertices,
+            edges: self.edges.clone(),
+            faces: Vec::new(),
+            center: None,
         }
     }
 }
