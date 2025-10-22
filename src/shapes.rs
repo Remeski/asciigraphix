@@ -386,10 +386,10 @@ impl Shape4 {
         edges.push(Edge(10, 14)); // c + d to b + c + d
 
         vertices.push(start + a + b + c + d); // 15
-        edges.push(Edge(11,15));
-        edges.push(Edge(12,15));
-        edges.push(Edge(13,15));
-        edges.push(Edge(14,15));
+        edges.push(Edge(11,15)); // a + b + c to a + b + c + d
+        edges.push(Edge(12,15)); // a + b + d to a + b + c + d
+        edges.push(Edge(13,15)); // a + c + d to a + b + c + d
+        edges.push(Edge(14,15)); // b + c + d to a + b + c + d
 
         Shape4 {
             vertices,
