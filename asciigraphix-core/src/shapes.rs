@@ -113,7 +113,7 @@ impl Point {
         let u = self.cross(&a).unit();
         let w = self.cross(&u).unit();
         let vecs = (self.clone(), u, w);
-        dbg!(&vecs);
+        // dbg!(&vecs);
         vecs
     }
 }

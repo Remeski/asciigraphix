@@ -1,4 +1,4 @@
-use shapes::{Edge, Face, Point};
+use shapes::{Edge, Point};
 
 pub mod shapes;
 
@@ -12,6 +12,7 @@ pub struct Display {
 }
 
 #[derive(Copy, Clone)]
+#[allow(dead_code)]
 enum TextColor {
     Red,
     Cyan,
@@ -99,19 +100,19 @@ impl Display {
         }
     }
 
-    fn project_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
-        for face in faces {
-            let vertex_1 = vertices.get(face.0);
-            let vertex_2 = vertices.get(face.1);
-            let vertex_3 = vertices.get(face.2);
-        }
-    }
+    // fn project_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
+    //     for face in faces {
+    //         let vertex_1 = vertices.get(face.0);
+    //         let vertex_2 = vertices.get(face.1);
+    //         let vertex_3 = vertices.get(face.2);
+    //     }
+    // }
 
     fn project(&mut self, shape: &shapes::Shape) {
         self.pixels = vec![vec![None; self.x_size]; self.y_size];
         self.project_vertices(&shape.vertices);
         self.project_edges(&shape.vertices, &shape.edges);
-        self.project_faces(&shape.vertices, &shape.faces);
+        // self.project_faces(&shape.vertices, &shape.faces);
     }
 
     fn colored(text: &str, color: TextColor) {
@@ -123,7 +124,34 @@ impl Display {
         }
     }
 
-    pub fn render(&mut self, shape: &shapes::Shape) {
+    pub fn render(&mut self, shape: &shapes::Shape) -> String {
+        self.project(&shape);
+        let mut result = String::new();
+        for row in &self.pixels {
+            for z in row {
+                match z {
+                    Some(p) => {
+                        if *p < 10.0 {
+                            result.push('#');
+                        } else if *p < 30.0 {
+                            result.push('*');
+                        } else if *p < 50.0 {
+                            result.push('-');
+                        } else {
+                            result.push('.');
+                        }
+                    }
+                    None => {
+                        result.push(' ');
+                    }
+                }
+            }
+            result.push('\n');
+        }
+        result
+    }
+
+    pub fn render_print(&mut self, shape: &shapes::Shape) {
         self.project(&shape);
         Self::clear_screen();
         let color = TextColor::Cyan;

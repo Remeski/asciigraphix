@@ -1,4 +1,4 @@
-use asciigraphix::{
+use asciigraphix_core::{
     shapes::{Point, Shape}, Display
 };
 
