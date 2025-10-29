@@ -21,7 +21,7 @@ fn main() {
         tesseract.rotate(&Point4(0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.02, 0.01, 0.00));
         // tesseract.rotate(&Point4(0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.00, 0.00, 0.01));
 
-        display.render(&tesseract.project_to_3d());
+        display.render_print(&tesseract.project_to_3d());
 
         std::thread::sleep(std::time::Duration::from_millis(33));
     }

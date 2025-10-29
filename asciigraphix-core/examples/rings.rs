@@ -31,7 +31,7 @@ fn main() {
             // (0.01, 0.01 * b.sin(), 0.0),
             (-0.1 * b.sin(), 0.1 * (1.0 - b.sin()), 0.0),
         );
-        display.render(&ring1.combine(&ring2).combine(&ring3));
+        display.render_print(&ring1.combine(&ring2).combine(&ring3));
         std::thread::sleep(std::time::Duration::from_millis(33));
         b += 0.01;
     }

@@ -18,7 +18,7 @@ fn main() {
             &cube.center.clone().unwrap_or(Point(0.0, 0.0, 0.0)),
             (0.05, 0.05, 0.0),
         );
-        display.render(&cube);
+        display.render_print(&cube);
 
         std::thread::sleep(std::time::Duration::from_millis(33));
     }
