@@ -14,6 +14,22 @@ impl std::ops::Add for Point {
     }
 }
 
+impl std::ops::AddAssign for Point {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+        self.2 += rhs.2;
+    }
+}
+
+impl std::ops::SubAssign for Point {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
+        self.2 -= rhs.2;
+    }
+}
+
 impl std::ops::Add for Point4 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -100,21 +116,34 @@ impl Point {
         )
     }
 
-    pub fn orthogonal_basis(&self) -> (Self, Self, Self) {
-        // Pick vector not parallel to v
-        let a = if self.0.abs() < self.1.abs() && self.0.abs() < self.2.abs() {
-            Self(1.0, 0.0, 0.0)
-        } else if self.1.abs() < self.2.abs() {
-            Self(0.0, 1.0, 0.0)
-        } else {
-            Self(0.0, 0.0, 1.0)
-        };
-
-        let u = self.cross(&a).unit();
-        let w = self.cross(&u).unit();
-        let vecs = (self.clone(), u, w);
-        // dbg!(&vecs);
-        vecs
+    // perhaps consider making some matrix multiplication feature
+    pub fn rotate(&mut self, theta: f64, phi: f64) {
+        // i' = cos theta i + sin theta j
+        // j' = -sin theta i + cos theta j
+        //
+        // cos theta -sin theta
+        // sin theta cos theta
+        let old_0 = self.0.clone();
+        let old_1 = self.1.clone();
+        self.0 = theta.cos() * old_0 - theta.sin() * old_1;
+        self.1 = theta.sin() * old_0 + theta.cos() * old_1;
+        // let old_0 = self.0.clone();
+        // let old_1 = self.1.clone();
+        // self.0 = phi.cos() * old_0 - phi.sin() * old_1;
+        // self.1 = phi.sin() * old_0 + phi.cos() * old_1;
+        
+        // rotate in c = (-y, x, 0)/r,p = (x,y,0)/r ,k = (0,0,1) basis where coordinates c = 0, p = r, k = z
+        let r = (self.0.powf(2.0) + self.1.powf(2.0)).sqrt();
+        let z = self.2.clone();
+        let p_new = phi.cos() * r - phi.sin() * z;
+        let k_new = phi.sin() * r + phi.cos() * z;
+        // to natural basis
+        let old_0 = self.0.clone();
+        let old_1 = self.1.clone();
+        // let old_2 = self.2;
+        self.0 = (old_0 * p_new) / r;
+        self.1 = (old_1 * p_new) / r;
+        self.2 = k_new;
     }
 }
 
