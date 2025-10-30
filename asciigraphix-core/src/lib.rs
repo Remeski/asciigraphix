@@ -34,32 +34,42 @@ impl Display {
             y_size,
             pixels,
             cam_pos,
-            cam_unit_vectors: cam_direction.orthogonal_basis(),
+            cam_unit_vectors: Self::orthogonal_basis(cam_direction),
             cam_focal,
         }
     }
 
+    fn orthogonal_basis(cam_direction: Point) -> (Point, Point, Point) {
+        // Pick a vector from xy-plane i.e. (x, y, 0) that is orthogonal to cam_direction
+        let a = Point(cam_direction.1, -cam_direction.0, 0.0).unit();
+        let b = cam_direction.cross(&a).unit();
+        (cam_direction.unit(), a, b)
+    }
+
     fn clear_screen() {
+        // clear screen
         print!("\x1B[2J\x1B[1;1H");
+        // hide cursor
+        print!("\x1B[?25l");
     }
 
     fn project_point(&mut self, point: &Point) {
         let cam_to_point = point.clone() - self.cam_pos.clone();
         // dbg!(self.cam_unit_vectors.clone());
-        let z = cam_to_point.dot(&self.cam_unit_vectors.0);
+        let depth = cam_to_point.dot(&self.cam_unit_vectors.0);
         let x = cam_to_point.dot(&self.cam_unit_vectors.1);
         let y = cam_to_point.dot(&self.cam_unit_vectors.2);
-        if z <= 0.0 {
+        if depth <= 0.0 {
             return;
         }
         // let x = self.cam_unit_vectors.clone().1 * dot_x;
         // let y = self.cam_unit_vectors.clone().2 * dot_y;
         // let z = self.cam_unit_vectors.clone().0 * dot_z;
 
-        let x_pixel = self.cam_focal * x / z;
-        let y_pixel = self.cam_focal * y / z;
+        let x_pixel = self.cam_focal * x / depth;
+        let y_pixel = self.cam_focal * y / depth;
         let x_pixel = x_pixel + (self.x_size as f64 / 2.0);
-        let y_pixel = -y_pixel + (self.y_size as f64 / 2.0);
+        let y_pixel = y_pixel + (self.y_size as f64 / 2.0);
         if (x_pixel < 0.0) || (y_pixel < 0.0) {
             return;
         }
@@ -68,13 +78,13 @@ impl Display {
         if (x_pixel >= self.x_size) || (y_pixel >= self.y_size) {
             return;
         }
-        let cur_z = self.pixels[y_pixel][x_pixel];
-        if let Some(k) = cur_z {
-            if z > k {
-                self.pixels[y_pixel][x_pixel] = Some(z);
+        let cur_depth = self.pixels[y_pixel][x_pixel];
+        if let Some(k) = cur_depth {
+            if depth > k {
+                self.pixels[y_pixel][x_pixel] = Some(depth);
             }
         } else {
-            self.pixels[y_pixel][x_pixel] = Some(z);
+            self.pixels[y_pixel][x_pixel] = Some(depth);
         }
     }
 
