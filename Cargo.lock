@@ -94,6 +94,7 @@ name = "asciigraphix-ssh"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "asciigraphix-tui",
  "crossterm 0.29.0",
  "rand 0.9.2",
  "ratatui",

@@ -11,3 +11,4 @@ ratatui = "0.29.0"
 russh = "0.54.6"
 ssh-key = "0.6.7"
 tokio = "1.48.0"
+asciigraphix-tui = { path = "../asciigraphix-tui/" }

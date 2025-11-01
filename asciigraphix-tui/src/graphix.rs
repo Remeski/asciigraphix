@@ -1,4 +1,4 @@
-use asciigraphix_core::{shapes::{Point, Shape}, Display, RGB};
+use asciigraphix_core::{shapes::{Point, Shape}, Display};
 use ratatui::{style::{Color, Style}, widgets::Widget};
 
 pub struct Graphix<'a> {
