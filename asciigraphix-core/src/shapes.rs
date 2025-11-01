@@ -90,6 +90,15 @@ impl std::ops::Mul<f64> for Point4 {
 }
 
 impl Point {
+    pub fn e(i: usize) -> Self {
+        match i {
+            1 => Self(1.0, 0.0, 0.0),
+            2 => Self(0.0, 1.0, 0.0),
+            3 => Self(0.0, 0.0, 1.0),
+            _ => { panic!("invalid e vector") }
+        }
+    }
+
     pub fn zero() -> Self {
         Point(0.0, 0.0, 0.0)
     }
@@ -152,6 +161,20 @@ impl Point {
 }
 
 impl Point4 {
+    pub fn e(i: usize) -> Self {
+        match i {
+            1 => Self(1.0, 0.0, 0.0, 0.0),
+            2 => Self(0.0, 1.0, 0.0, 0.0),
+            3 => Self(0.0, 0.0, 1.0, 0.0),
+            4 => Self(0.0, 0.0, 0.0, 1.0),
+            _ => { panic!("invalid e vector") }
+        }
+    }
+
+    pub fn zero() -> Self {
+        Self(0.0, 0.0, 0.0, 0.0)
+    }
+
     pub fn set(&mut self, p: Point4) {
         self.0 = p.0;
         self.1 = p.1;

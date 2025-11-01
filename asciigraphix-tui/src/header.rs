@@ -1,15 +1,16 @@
 use figlet_rs::FIGfont;
-use ratatui::{style::Style, widgets::Widget};
+use ratatui::{layout::Rect, style::Style, widgets::Widget};
 
 pub struct Header {
     text: String,
     style: Style,
+    cursor: Style,
     pub height: usize,
     pub width: usize,
 }
 
 impl Header {
-    pub fn new(text: String, style: Style) -> Self {
+    pub fn new(text: String, style: Style, cursor: Style) -> Self {
         let text_rendered = Self::render(text);
         let height = (&text_rendered).lines().count();
         let width = (&text_rendered).lines().next().unwrap_or("").len();
@@ -18,7 +19,8 @@ impl Header {
             text: text_rendered,
             style,
             height, 
-            width 
+            width,
+            cursor
         }
     }
 
@@ -37,5 +39,7 @@ impl Widget for Header {
         for (i, line) in self.text.lines().enumerate() {
             buf.set_string(area.x, area.y + i as u16, line, self.style);
         }
+        let cursor_area = Rect::new(area.x + self.width as u16 + 2, area.y, 8, self.height as u16);
+        buf.set_style(cursor_area, self.cursor);
     }
 }
