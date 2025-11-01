@@ -7,3 +7,4 @@ edition = "2024"
 crossterm = "0.29.0"
 ratatui = "0.29.0"
 asciigraphix-core = {path = "../asciigraphix-core/"}
+figlet-rs = "0.1.5"

@@ -1,110 +1,82 @@
-use std::{error::Error, time::Duration};
+use std::{io, time::Duration};
 
-use asciigraphix_core::{shapes::{Point, Point4, Shape, Shape4}, Display};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, ModifierKeyCode};
-use ratatui::{layout::Rect, style::Style, text::Line, widgets::{Paragraph, StatefulWidget, Widget}, DefaultTerminal, Frame};
+use asciigraphix_core::shapes::{Point, Shape};
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use ratatui::{
+    layout::Rect, style::Style, widgets::{Paragraph, Widget}, DefaultTerminal, Frame
+};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let terminal = ratatui::init();
-    let result = run(terminal);
+use crate::{graphix::Graphix, header::Header};
+
+mod graphix;
+mod header;
+
+fn main() -> io::Result<()> {
+    let mut terminal = ratatui::init();
+    let mut app = App::default();
+    let result = app.run(&mut terminal);
     ratatui::restore();
     result
 }
 
-fn run(mut terminal: DefaultTerminal) -> Result<(), Box<dyn Error>> {
-    let mut cube = Shape::generate_cube(Point(0.0, 0.0, 0.0), 20.0);
-    // let p = Shape::generate_parallelepiped(Point(0.0, 0.0, 0.0), Point(10.0, 0.0, 0.0), Point(0.0, 10.0, 0.0), Point(0.0, 0.0, 10.0));
-    // let l = 3.0;
-    // let start = Point4(-5.0,-5.0,-5.0,-5.0)*l;
-    // let mut tesseract = Shape4::generate_4d_paralellepiped(start, Point4(10.0, 0.0, 0.0,0.0)*l, Point4(0.0,10.0,0.0,0.0)*l, Point4(0.0,0.0,10.0,0.0)*l, Point4(0.0,0.0,0.0,10.0)*l);
+struct App {
+    shape: Shape,
+    cam_pos: Point,
+    cam_direction: Point,
+    rotations: (f64, f64, f64),
+    exit: bool,
+}
 
-    let mut speed_1 = 0.0;
-    let mut speed_2 = 0.0;
-    let mut speed_3 = 0.0;
-    let mut speed_4 = 0.0;
-    let mut speed_5 = 0.0;
-    let mut speed_6 = 0.0;
+impl Default for App {
+    fn default() -> Self {
+        App {
+            shape: Shape::generate_cube(Point::zero(), 1.0),
+            cam_pos: Point(0.0, -10.0, 0.0),
+            cam_direction: Point(0.0, 1.0, 0.0),
+            rotations: (0.0, 0.0, 0.0),
+            exit: false,
+        }
+    }
+}
 
-    let mut cam_pos = Point(0.0, -30.0, 0.0);
-    let mut cam_direction = Point(0.0, 1.0, 0.0);
+impl App {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        while !self.exit {
+            self.handle_events()?;
+            self.update()?;
+            terminal.draw(|frame| self.draw(frame))?;
+        }
+        Ok(())
+    }
 
-    loop {
-        // tesseract.rotate(
-        //     &Point4(0.0, 0.0, 0.0, 0.0),
-        //     (speed_1 * 0.1, speed_2 * 0.1, speed_3 * 0.1, speed_4 * 0.1, speed_5 * 0.1, speed_6 * 0.1),
-        // );
-
-        // let gx = Graphix::new(tesseract.project_to_3d(), cam_pos, cam_direction);
-        let gx = Graphix::new(&cube, cam_pos, cam_direction);
-
-        terminal.draw(|frame | render(frame, &gx, (speed_1, speed_2, speed_3, speed_4, speed_5, speed_6)))?;
-
-        if event::poll(Duration::from_millis(10))? {
+    fn handle_events(&mut self) -> io::Result<()> {
+        if event::poll(Duration::from_millis(5))? {
             match event::read()? {
-                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                    match key_event.code {
-                        KeyCode::Char('q') => {
-                            break Ok(())
-                        }
-                        KeyCode::Char('w') => {
-                            cam_pos += cam_direction * 0.2;
-                        }
-                        KeyCode::Char('s') => {
-                            cam_pos -= cam_direction * 0.2
-                        }
-                        KeyCode::Char('a') => {
-                            cam_pos -= Point(cam_direction.1, -cam_direction.0, 0.0) * 0.2;
-                        }
-                        KeyCode::Char('d') => {
-                            cam_pos += Point(cam_direction.1, -cam_direction.0, 0.0) * 0.2;
-                        }
-                        KeyCode::Up => {
-                            cam_direction.rotate(0.0, 0.01);
-                        }
-                        KeyCode::Down => {
-                            cam_direction.rotate(0.0, -0.01);
-                        }
-                        KeyCode::Left => {
-                            cam_direction.rotate(0.01, 0.0);
-                        }
-                        KeyCode::Right => {
-                            cam_direction.rotate(-0.01, 0.0);
-                        }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('q'),
+                    ..
+                }) => {
+                    self.exit = true;
+                }
+                Event::Key(k) => {
+                    match k.code {
                         KeyCode::Char('h') => {
-                            speed_1 += 0.1;
-                        }
-                        KeyCode::Char('j') => {
-                            speed_2 += 0.1;
-                        }
-                        KeyCode::Char('k') => {
-                            speed_3 += 0.1; 
-                        }
-                        KeyCode::Char('l') => {
-                            speed_4 += 0.1; 
-                        }
-                        KeyCode::Char('n') => {
-                            speed_5 += 0.1; 
-                        }
-                        KeyCode::Char('m') => {
-                            speed_6 += 0.1; 
+                            self.rotations.0 += 0.01;
                         }
                         KeyCode::Char('H') => {
-                            speed_1 -= 0.1;
+                            self.rotations.0 -= 0.01;
+                        }
+                        KeyCode::Char('j') => {
+                            self.rotations.1 += 0.01;
                         }
                         KeyCode::Char('J') => {
-                            speed_2 -= 0.1;
+                            self.rotations.1 -= 0.01;
                         }
-                        KeyCode::Char('K') => {
-                            speed_3 -= 0.1; 
+                        KeyCode::Char('l') => {
+                            self.rotations.2 += 0.01;
                         }
                         KeyCode::Char('L') => {
-                            speed_4 -= 0.1;
-                        }
-                        KeyCode::Char('N') => {
-                            speed_5 -= 0.1; 
-                        }
-                        KeyCode::Char('M') => {
-                            speed_6 -= 0.1; 
+                            self.rotations.2 -= 0.01;
                         }
                         _ => {}
                     }
@@ -112,45 +84,29 @@ fn run(mut terminal: DefaultTerminal) -> Result<(), Box<dyn Error>> {
                 _ => {}
             }
         };
+        Ok(())
+    }
+
+    fn update(&mut self) -> io::Result<()> {
+        self.shape.rotate(&self.shape.center.unwrap_or(Point::zero()), self.rotations);
+        Ok(())
+    }
+
+    fn draw(&self, frame: &mut Frame) {
+        frame.render_widget(self, frame.area());
     }
 }
 
-fn render(frame: &mut Frame, gx: &Graphix, rots: (f64, f64, f64, f64, f64, f64)) {
-    let t_area = Rect::new(0, 0, frame.area().width, 1);
-    frame.render_widget(Paragraph::new(format!("{:.1} {:.1} {:.1} {:.1} {:.1} {:.1}", rots.0, rots.1, rots.2, rots.3, rots.4, rots.5)), t_area);
-    frame.render_widget(gx, Rect::new(0,1,frame.area().width, frame.area().height - 1));
-}
-
-struct Graphix<'a> {
-    shape: &'a Shape,
-    cam_pos: Point,
-    cam_direction: Point
-}
-
-impl<'a> Graphix<'a> {
-    pub fn new(shape: &'a Shape, cam_pos: Point, cam_direction: Point) -> Self {
-        Self {
-            shape,
-            cam_pos,
-            cam_direction
-        }
-    }
-}
-
-impl<'a> Widget for &Graphix<'a> {
-    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
+impl Widget for &App {
+    fn render(self, area: Rect, buf: &mut ratatui::prelude::Buffer)
     where
         Self: Sized,
     {
-        let mut display = Display::new(
-            area.width as usize,
-            area.height as usize,
-            self.cam_pos,
-            self.cam_direction,
-            10.0,
-        );
-        for (i,line) in display.render(&self.shape).lines().enumerate() {
-            buf.set_string(area.x, (area.y as usize + i) as u16, line, Style::default());
-        }
+        Graphix::new(&self.shape, self.cam_pos, self.cam_direction).render(area, buf);
+        // Paragraph::new("Asciigraphix").render(Rect::new(area.width / 2 - "Asciigraphix".len() as u16 / 2, 3, "Asciigraphix".len() as u16, 1), buf);
+        let h = Header::new(String::from("Asciigraphix"), Style::new().fg(ratatui::style::Color::Red));
+        let h_height = (&h.height).clone() as u16;
+        let h_width = (&h.width).clone() as u16;
+        h.render(Rect::new(area.width / 2 - h_width / 2, 5, h_width, h_height), buf);
     }
 }

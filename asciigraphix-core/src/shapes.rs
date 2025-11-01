@@ -90,6 +90,10 @@ impl std::ops::Mul<f64> for Point4 {
 }
 
 impl Point {
+    pub fn zero() -> Self {
+        Point(0.0, 0.0, 0.0)
+    }
+
     fn set(&mut self, p: Point) {
         self.0 = p.0;
         self.1 = p.1;

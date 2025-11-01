@@ -11,6 +11,26 @@ pub struct Display {
     cam_focal: f64,
 }
 
+// 8-bit color
+pub struct RGB(u8, u8, u8);
+
+impl RGB {
+    pub fn to_u32(&self) -> u32 {
+        (self.0 as u32) << 16 | (self.1 as u32) << 8 | self.2 as u32
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RGB;
+
+    #[test]
+    fn rgb() {
+        let color = RGB(255, 5, 15);
+        assert_eq!(color.to_u32(), 0x00FF050F);
+    }
+}
+
 #[derive(Copy, Clone)]
 #[allow(dead_code)]
 enum TextColor {
@@ -134,29 +154,24 @@ impl Display {
         }
     }
 
-    pub fn render(&mut self, shape: &shapes::Shape) -> String {
+    // Vec<(depth, color)>
+    // for now color is set to some default
+    pub fn render(&mut self, shape: &shapes::Shape) -> Vec<(f32, u32)> {
+        const FG: RGB = RGB(254,0,0);
+        const BG: RGB = RGB(10,10,10);
         self.project(&shape);
-        let mut result = String::new();
+        let mut result = Vec::new();
         for row in &self.pixels {
             for z in row {
                 match z {
                     Some(p) => {
-                        if *p < 10.0 {
-                            result.push('#');
-                        } else if *p < 30.0 {
-                            result.push('*');
-                        } else if *p < 50.0 {
-                            result.push('-');
-                        } else {
-                            result.push('.');
-                        }
+                        result.push(((*p as f32).clone(), FG.to_u32()));
                     }
                     None => {
-                        result.push(' ');
+                        result.push((0.0 as f32, BG.to_u32()));
                     }
                 }
             }
-            result.push('\n');
         }
         result
     }
