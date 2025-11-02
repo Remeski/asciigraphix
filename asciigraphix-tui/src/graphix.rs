@@ -1,5 +1,5 @@
 use asciigraphix_core::{shapes::{Point, Shape}, Display};
-use ratatui::{style::{Color, Style}, widgets::Widget};
+use ratatui::{style::{Color, Style, Stylize}, widgets::Widget};
 
 pub struct Graphix<'a> {
     shape: &'a Shape,
@@ -30,13 +30,25 @@ impl<'a> Widget for &Graphix<'a> {
             100.0,
         );
 
-        for (i, (_, color)) in display.render(&self.shape).iter().enumerate() {
+        for (i, (depth, _)) in display.render(&self.shape).iter().enumerate() {
             let x = i % area.width as usize;
             let y = (i - x) / area.width as usize;
 
             let str = "∷";
 
-            buf.set_string(area.x + x as u16, area.y + y as u16, str, Style::new().fg(Color::from_u32(*color)));
+            // linear from 0.5 - 1.0 as depth 5.0 - 10.0
+            let coef = (-0.5/8.0 * (depth - 5.0) + 1.0).min(1.0).max(0.5);
+            let c = (255.0 * coef) as u8;
+            let mut color = Color::Rgb(c, 0, 0);
+            if *depth == 0.0 {
+                color = Color::Rgb(0,0,0);
+            }
+            let mut style = Style::new()
+                .fg(color);
+            if *depth < 5.0 {
+                style = style.bold();
+            }
+            buf.set_string(area.x + x as u16, area.y + y as u16, str, style);
         }
     }
 }
