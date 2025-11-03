@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
 use rand_core::OsRng;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
@@ -81,6 +82,7 @@ impl AppServer {
                 tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
 
                 for (_, (terminal, app)) in clients.lock().await.iter_mut() {
+                    app.handle_events().expect("something bad happened");
                     app.update().expect("something bad happened");
                     terminal.draw(|frame| app.draw(frame)).expect("something bad happened");
                 }
@@ -101,6 +103,13 @@ impl AppServer {
         self.run_on_address(Arc::new(config), ("0.0.0.0", 2222))
             .await?;
         Ok(())
+    }
+
+    async fn send_key_press(&mut self, key: char) {
+        let mut clients = self.clients.lock().await;
+        let (_, app) = clients.get_mut(&self.id).unwrap();
+        let event = Event::Key(KeyEvent { code: KeyCode::Char(key), modifiers: KeyModifiers::empty(), kind: KeyEventKind::Press, state: KeyEventState::empty() });
+        app.handle_event(event);
     }
 }
 
@@ -152,14 +161,28 @@ impl Handler for AppServer {
         match data {
             // Pressing 'q' closes the connection.
             b"q" => {
+                self.send_key_press('q').await;
                 self.clients.lock().await.remove(&self.id);
                 session.close(channel)?;
+            }
+            b"w" => {
+                self.send_key_press('w').await;
+            }
+            b"s" => {
+                self.send_key_press('s').await;
+            }
+            b" " => {
+                self.send_key_press(' ').await;
+            }
+            b"r" => {
+                self.send_key_press('r').await;
             }
             _ => {}
         }
 
         Ok(())
     }
+
 
     /// The client's window size has changed.
     async fn window_change_request(

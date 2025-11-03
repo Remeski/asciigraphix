@@ -6,7 +6,11 @@ use std::{
 use asciigraphix_core::shapes::{Point, Point4, Shape, Shape4};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::{
-    layout::{Alignment, Rect}, prelude::CrosstermBackend, style::{Color, Style, Stylize}, widgets::{Block, Borders, Gauge, Widget}, Frame, Terminal
+    Frame, Terminal,
+    layout::{Alignment, Rect},
+    prelude::CrosstermBackend,
+    style::{Color, Style, Stylize},
+    widgets::{Block, Borders, Gauge, Widget},
 };
 
 use crate::{graphix::Graphix, header::Header};
@@ -75,61 +79,64 @@ impl App {
         }
         Ok(())
     }
+    pub fn handle_event(&mut self, event: Event) {
+        match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('q'),
+                ..
+            }) => {
+                self.exit = true;
+            }
+            Event::Key(k) => match k.code {
+                KeyCode::Up => {
+                    self.cam_pos += self.cam_direction * 0.2;
+                }
+                KeyCode::Down => {
+                    self.cam_pos -= self.cam_direction * 0.2;
+                }
+                KeyCode::Char('h') => {
+                    self.rotations3d.0 += 0.01;
+                }
+                KeyCode::Char('H') => {
+                    self.rotations3d.0 -= 0.01;
+                }
+                KeyCode::Char('j') => {
+                    self.rotations3d.1 += 0.01;
+                }
+                KeyCode::Char('J') => {
+                    self.rotations3d.1 -= 0.01;
+                }
+                KeyCode::Char('l') => {
+                    self.rotations3d.2 += 0.01;
+                }
+                KeyCode::Char('L') => {
+                    self.rotations3d.2 -= 0.01;
+                }
+                KeyCode::Char('w') => {
+                    if self.confusion <= 80 {
+                        self.confusion += 20
+                    }
+                }
+                KeyCode::Char('s') => {
+                    if self.confusion >= 20 {
+                        self.confusion -= 20
+                    }
+                }
+                KeyCode::Char('r') => {
+                    self.reset = true;
+                }
+                KeyCode::Char(' ') => {
+                    self.paused = !self.paused;
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
 
     pub fn handle_events(&mut self) -> io::Result<()> {
         if event::poll(Duration::from_millis(5))? {
-            match event::read()? {
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('q'),
-                    ..
-                }) => {
-                    self.exit = true;
-                }
-                Event::Key(k) => match k.code {
-                    KeyCode::Up => {
-                        self.cam_pos += self.cam_direction * 0.2;
-                    }
-                    KeyCode::Down => {
-                        self.cam_pos -= self.cam_direction * 0.2;
-                    }
-                    KeyCode::Char('h') => {
-                        self.rotations3d.0 += 0.01;
-                    }
-                    KeyCode::Char('H') => {
-                        self.rotations3d.0 -= 0.01;
-                    }
-                    KeyCode::Char('j') => {
-                        self.rotations3d.1 += 0.01;
-                    }
-                    KeyCode::Char('J') => {
-                        self.rotations3d.1 -= 0.01;
-                    }
-                    KeyCode::Char('l') => {
-                        self.rotations3d.2 += 0.01;
-                    }
-                    KeyCode::Char('L') => {
-                        self.rotations3d.2 -= 0.01;
-                    }
-                    KeyCode::Char('w') => {
-                        if self.confusion <= 80 {
-                            self.confusion += 20
-                        }
-                    }
-                    KeyCode::Char('s') => {
-                        if self.confusion >= 20 {
-                            self.confusion -= 20
-                        }
-                    }
-                    KeyCode::Char('r') => {
-                        self.reset = true;
-                    }
-                    KeyCode::Char(' ') => {
-                        self.paused = !self.paused;
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
+            self.handle_event(event::read()?);
         };
         Ok(())
     }
