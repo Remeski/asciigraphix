@@ -433,7 +433,7 @@ impl Shape4 {
         edges.push(Edge(6, 11)); // a + b to a + b + c
         edges.push(Edge(6, 12)); // a + b to a + b + d
         edges.push(Edge(7, 11)); // a + c to a + b + c
-        edges.push(Edge(7, 14)); // a + c to b + c + d
+        edges.push(Edge(7, 13)); // a + c to a + c + d
         edges.push(Edge(8, 11)); // b + c to a + b + c
         edges.push(Edge(8, 14)); // b + c to b + c + d
         edges.push(Edge(9, 12)); // b + d to a + b + d
