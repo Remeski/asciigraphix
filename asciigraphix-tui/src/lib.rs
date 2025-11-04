@@ -38,25 +38,25 @@ pub struct App {
 
 impl Default for App {
     fn default() -> Self {
-        const L: f64 = 2.5;
+        const L: f64 = 30.0;
         App {
             shape: Shape::generate_cube(Point::zero(), 1.0),
             shape4: Shape4::generate_4d_paralellepiped(
-                Point4::zero() - Point4(1.0, 1.0, 1.0, 1.0) * L / 2.0,
+                Point4::zero() - Point4(1.0, 1.0, 0.7, 0.7) * L / 2.0,
                 Point4::e(1) * L,
                 Point4::e(2) * L,
-                Point4::e(3) * L,
-                Point4::e(4) * L,
+                Point4::e(3) * 0.7 * L,
+                Point4::e(4) * 0.7 * L,
             ),
-            cam_pos: Point(0.0, -10.0, 0.0),
+            cam_pos: Point(0.0, -80.0, 0.0),
             cam_direction: Point(0.0, 1.0, 0.0),
             rotations3d: (0.01, 0.0, 0.01),
             rotations4d: (0.0, 0.0, 0.0, 0.01, 0.00, 0.01),
-            header_cursor_blink_state: 0.0,
+            header_text: String::from("H"),
+            header_cursor_blink_state: 1.0,
             last_time: Instant::now(),
             dt: Duration::from_millis(0),
             elapsed: Duration::from_millis(0),
-            header_text: String::from("H"),
             confusion: 0,
             reset: false,
             paused: false,
@@ -145,14 +145,17 @@ impl App {
         if self.reset {
             self.reset = false;
 
+            self.header_cursor_blink_state = 1.0;
+
             self.header_text = String::from("H");
-            const L: f64 = 2.5;
+
+            const L: f64 = 30.0;
             self.shape4 = Shape4::generate_4d_paralellepiped(
-                Point4::zero() - Point4(1.0, 1.0, 1.0, 1.0) * L / 2.0,
+                Point4::zero() - Point4(1.0, 1.0, 0.7, 0.7) * L / 2.0,
                 Point4::e(1) * L,
                 Point4::e(2) * L,
-                Point4::e(3) * L,
-                Point4::e(4) * L,
+                Point4::e(3) * 0.7 * L,
+                Point4::e(4) * 0.7 * L,
             );
         }
 
@@ -177,23 +180,26 @@ impl App {
         );
 
         if self.confusion == 0 {
-            self.rotations4d = (0.01, 0.00, 0.0, 0.0, 0.0, 0.0);
+            self.rotations4d = (0.00, 0.00, 0.0, 0.00, 0.0, 0.0);
         } else if self.confusion <= 20 {
-            self.rotations4d = (0.00, 0.01, 0.00, 0.00, 0.00, 0.0);
+            self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.00, 0.0);
         } else if self.confusion <= 40 {
-            self.rotations4d = (0.00, 0.00, 0.00, 0.01, 0.01, 0.0);
+            self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.02, 0.0);
         } else if self.confusion <= 60 {
-            self.rotations4d = (0.00, 0.01, 0.00, 0.01, 0.00, 0.00);
+            self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.00, 0.02);
         } else if self.confusion <= 80 {
-            self.rotations4d = (0.01, 0.0, 0.00, 0.01, 0.00, 0.00);
+            self.rotations4d = (0.00, 0.0, 0.00, 0.02, 0.02, 0.00);
         } else if self.confusion <= 100 {
-            self.rotations4d = (0.01, 0.00, 0.00, 0.01, 0.01, 0.00);
+            self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.02, 0.02);
         }
 
         self.shape4.rotate(&Point4::zero(), self.rotations4d);
 
-        self.header_cursor_blink_state =
-            (2.0 * (-(0.004 * (self.elapsed.as_millis() as f64)).sin()).tanh() + 1.0) / 2.0;
+        if self.header_text.len() >= String::from(HEADER).len() {
+            self.header_cursor_blink_state =
+                (2.0 * (-(0.004 * (self.elapsed.as_millis() as f64)).sin()).tanh() + 1.0) / 2.0;
+        }
+
         Ok(())
     }
 
@@ -231,16 +237,16 @@ impl Widget for &App {
         );
 
         Gauge::default()
-            .gauge_style(Style::new().fg(Color::Red).bg(Color::Reset))
+            .gauge_style(Style::new().fg(Color::Red).bg(Color::Rgb(30, 30, 30)))
             .percent(self.confusion)
-            .style(Style::new().fg(Color::White))
+            .style(Style::new().fg(Color::White).bg(Color::Rgb(30, 30, 30)))
             .block(
                 Block::new()
                     .borders(Borders::TOP | Borders::BOTTOM)
                     .title(" Confusion ")
                     .title_alignment(Alignment::Center)
                     .title_style(Style::new().fg(Color::Red))
-                    .border_style(Style::new().red())
+                    .border_style(Style::new().red().bg(Color::Rgb(30, 30, 30)))
                     .title_bottom(" w increase | s decrease | space pause | r reset "),
             )
             .render(Rect::new(area.width / 2 - 35, area.height - 6, 75, 5), buf);

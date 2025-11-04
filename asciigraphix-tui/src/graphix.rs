@@ -36,16 +36,17 @@ impl<'a> Widget for &Graphix<'a> {
 
             let str = "∷";
 
-            // linear from 0.5 - 1.0 as depth 5.0 - 10.0
-            let coef = (-0.5/8.0 * (depth - 5.0) + 1.0).min(1.0).max(0.5);
-            let c = (255.0 * coef) as u8;
+            // linear interpolation from 0.5 - 1.0 as depth 30.0 - 100.0
+            let coef = (-0.5/70.0 * (depth - 30.0) + 1.0).min(1.0).max(0.5);
+            let c = (255.9999 * coef) as u8;
             let mut color = Color::Rgb(c, 0, 0);
             if *depth == 0.0 {
                 color = Color::Rgb(0,0,0);
             }
             let mut style = Style::new()
-                .fg(color);
-            if *depth < 5.0 {
+                .fg(color)
+                .bg(Color::Rgb(30, 30, 30));
+            if *depth < 60.0 {
                 style = style.bold();
             }
             buf.set_string(area.x + x as u16, area.y + y as u16, str, style);
