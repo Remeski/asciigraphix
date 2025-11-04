@@ -84,7 +84,9 @@ impl AppServer {
                 for (_, (terminal, app)) in clients.lock().await.iter_mut() {
                     app.handle_events().expect("something bad happened");
                     app.update().expect("something bad happened");
-                    terminal.draw(|frame| app.draw(frame)).expect("something bad happened");
+                    terminal
+                        .draw(|frame| app.draw(frame))
+                        .expect("something bad happened");
                 }
             }
         });
@@ -94,7 +96,8 @@ impl AppServer {
             auth_rejection_time: std::time::Duration::from_secs(3),
             auth_rejection_time_initial: Some(std::time::Duration::from_secs(0)),
             keys: vec![
-                russh::keys::PrivateKey::random(&mut OsRng, russh::keys::Algorithm::Ed25519).unwrap(),
+                russh::keys::PrivateKey::random(&mut OsRng, russh::keys::Algorithm::Ed25519)
+                    .unwrap(),
             ],
             nodelay: true,
             ..Default::default()
@@ -105,10 +108,15 @@ impl AppServer {
         Ok(())
     }
 
-    async fn send_key_press(&mut self, key: char) {
+    async fn send_key_press(&mut self, key: KeyCode) {
         let mut clients = self.clients.lock().await;
         let (_, app) = clients.get_mut(&self.id).unwrap();
-        let event = Event::Key(KeyEvent { code: KeyCode::Char(key), modifiers: KeyModifiers::empty(), kind: KeyEventKind::Press, state: KeyEventState::empty() });
+        let event = Event::Key(KeyEvent {
+            code: key,
+            modifiers: KeyModifiers::empty(),
+            kind: KeyEventKind::Press,
+            state: KeyEventState::empty(),
+        });
         app.handle_event(event);
     }
 }
@@ -158,31 +166,34 @@ impl Handler for AppServer {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
+        // there is probably a way simpler method than this but i dont have the motivation to think :)
         match data {
-            // Pressing 'q' closes the connection.
             b"q" => {
-                self.send_key_press('q').await;
+                self.send_key_press(KeyCode::Char('q')).await;
                 self.clients.lock().await.remove(&self.id);
                 session.close(channel)?;
             }
-            b"w" => {
-                self.send_key_press('w').await;
+            [b] if b.is_ascii_graphic() || *b == b' ' => { self.send_key_press(KeyCode::Char(*b as char)).await; }
+            b"?" => {
+                self.send_key_press(KeyCode::Char('?')).await;
             }
-            b"s" => {
-                self.send_key_press('s').await;
+            b"\x1b[A" => {
+                self.send_key_press(KeyCode::Up).await;
             }
-            b" " => {
-                self.send_key_press(' ').await;
+            b"\x1b[B" => {
+                self.send_key_press(KeyCode::Down).await;
             }
-            b"r" => {
-                self.send_key_press('r').await;
+            b"\x1b[C" => {
+                self.send_key_press(KeyCode::Right).await;
+            }
+            b"\x1b[D" => {
+                self.send_key_press(KeyCode::Left).await;
             }
             _ => {}
         }
 
         Ok(())
     }
-
 
     /// The client's window size has changed.
     async fn window_change_request(

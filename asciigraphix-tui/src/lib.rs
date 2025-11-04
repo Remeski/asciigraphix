@@ -6,11 +6,7 @@ use std::{
 use asciigraphix_core::shapes::{Point, Point4, Shape, Shape4};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::{
-    Frame, Terminal,
-    layout::{Alignment, Rect},
-    prelude::CrosstermBackend,
-    style::{Color, Style, Stylize},
-    widgets::{Block, Borders, Gauge, Widget},
+    layout::{Alignment, Margin, Rect}, prelude::CrosstermBackend, style::{Color, Style, Stylize}, widgets::{Clear, Block, Borders, Gauge, Paragraph, Widget}, Frame, Terminal
 };
 
 use crate::{graphix::Graphix, header::Header};
@@ -34,6 +30,8 @@ pub struct App {
     reset: bool,
     paused: bool,
     exit: bool,
+    help: bool,
+    explore: bool,
 }
 
 impl Default for App {
@@ -61,6 +59,8 @@ impl Default for App {
             reset: false,
             paused: false,
             exit: false,
+            help: false,
+            explore: false,
         }
     }
 }
@@ -80,6 +80,9 @@ impl App {
         Ok(())
     }
     pub fn handle_event(&mut self, event: Event) {
+        const ROTATION_AMOUNT: f64 = 0.01;
+        const CAM_ROTATION: (f64, f64) = (0.04, 0.04);
+        const CAM_SPEED: f64 = 0.5;
         match event {
             Event::Key(KeyEvent {
                 code: KeyCode::Char('q'),
@@ -88,46 +91,97 @@ impl App {
                 self.exit = true;
             }
             Event::Key(k) => match k.code {
-                KeyCode::Up => {
-                    self.cam_pos += self.cam_direction * 0.2;
-                }
-                KeyCode::Down => {
-                    self.cam_pos -= self.cam_direction * 0.2;
-                }
-                KeyCode::Char('h') => {
-                    self.rotations3d.0 += 0.01;
-                }
-                KeyCode::Char('H') => {
-                    self.rotations3d.0 -= 0.01;
-                }
-                KeyCode::Char('j') => {
-                    self.rotations3d.1 += 0.01;
-                }
-                KeyCode::Char('J') => {
-                    self.rotations3d.1 -= 0.01;
-                }
-                KeyCode::Char('l') => {
-                    self.rotations3d.2 += 0.01;
-                }
-                KeyCode::Char('L') => {
-                    self.rotations3d.2 -= 0.01;
-                }
-                KeyCode::Char('w') => {
-                    if self.confusion <= 80 {
-                        self.confusion += 20
-                    }
-                }
-                KeyCode::Char('s') => {
-                    if self.confusion >= 20 {
-                        self.confusion -= 20
-                    }
-                }
                 KeyCode::Char('r') => {
                     self.reset = true;
                 }
                 KeyCode::Char(' ') => {
                     self.paused = !self.paused;
                 }
+                KeyCode::Char('?') => {
+                    self.help = !self.help;
+                    self.paused = self.help;
+                }
+                KeyCode::Char('Q') => {
+                    self.explore = !self.explore;
+                }
+                d if !self.explore => match d {
+                    KeyCode::Char('w') => {
+                        if self.confusion <= 80 {
+                            self.confusion += 20
+                        }
+                    }
+                    KeyCode::Char('s') => {
+                        if self.confusion >= 20 {
+                            self.confusion -= 20
+                        }
+                    }
+                    _ => {}
+                },
+                d if self.explore => match d {
+                    KeyCode::Char('w') => {
+                        self.cam_pos += self.cam_direction * CAM_SPEED;
+                    }
+                    KeyCode::Char('s') => {
+                        self.cam_pos -= self.cam_direction * CAM_SPEED;
+                    }
+                    KeyCode::Char('a') => {
+                        self.cam_pos -=
+                            Point(self.cam_direction.1, -self.cam_direction.0, 0.0) * CAM_SPEED;
+                    }
+                    KeyCode::Char('d') => {
+                        self.cam_pos +=
+                            Point(self.cam_direction.1, -self.cam_direction.0, 0.0) * CAM_SPEED;
+                    }
+                    KeyCode::Up => {
+                        self.cam_direction.rotate(0.0, CAM_ROTATION.1);
+                    }
+                    KeyCode::Down => {
+                        self.cam_direction.rotate(0.0, -CAM_ROTATION.1);
+                    }
+                    KeyCode::Left => {
+                        self.cam_direction.rotate(CAM_ROTATION.0, 0.0);
+                    }
+                    KeyCode::Right => {
+                        self.cam_direction.rotate(-CAM_ROTATION.0, 0.0);
+                    }
+                    KeyCode::Char('h') => {
+                        self.rotations4d.0 += ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('H') => {
+                        self.rotations4d.0 -= ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('j') => {
+                        self.rotations4d.1 += ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('J') => {
+                        self.rotations4d.1 -= ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('k') => {
+                        self.rotations4d.2 += ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('K') => {
+                        self.rotations4d.2 -= ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('l') => {
+                        self.rotations4d.3 += ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('L') => {
+                        self.rotations4d.3 -= ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('n') => {
+                        self.rotations4d.4 += ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('N') => {
+                        self.rotations4d.4 -= ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('m') => {
+                        self.rotations4d.5 += ROTATION_AMOUNT;
+                    }
+                    KeyCode::Char('M') => {
+                        self.rotations4d.5 -= ROTATION_AMOUNT;
+                    }
+                    _ => {}
+                },
                 _ => {}
             },
             _ => {}
@@ -146,8 +200,12 @@ impl App {
             self.reset = false;
 
             self.header_cursor_blink_state = 1.0;
+            self.confusion = 0;
 
             self.header_text = String::from("H");
+
+            self.cam_direction = Point(0.0, 1.0, 0.0);
+            self.cam_pos = Point(0.0, -80.0, 0.0);
 
             const L: f64 = 30.0;
             self.shape4 = Shape4::generate_4d_paralellepiped(
@@ -179,18 +237,20 @@ impl App {
             self.rotations3d,
         );
 
-        if self.confusion == 0 {
-            self.rotations4d = (0.00, 0.00, 0.0, 0.00, 0.0, 0.0);
-        } else if self.confusion <= 20 {
-            self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.00, 0.0);
-        } else if self.confusion <= 40 {
-            self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.02, 0.0);
-        } else if self.confusion <= 60 {
-            self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.00, 0.02);
-        } else if self.confusion <= 80 {
-            self.rotations4d = (0.00, 0.0, 0.00, 0.02, 0.02, 0.00);
-        } else if self.confusion <= 100 {
-            self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.02, 0.02);
+        if !self.explore {
+            if self.confusion == 0 {
+                self.rotations4d = (0.00, 0.00, 0.0, 0.00, 0.0, 0.0);
+            } else if self.confusion <= 20 {
+                self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.00, 0.0);
+            } else if self.confusion <= 40 {
+                self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.02, 0.0);
+            } else if self.confusion <= 60 {
+                self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.00, 0.02);
+            } else if self.confusion <= 80 {
+                self.rotations4d = (0.00, 0.0, 0.00, 0.02, 0.02, 0.00);
+            } else if self.confusion <= 100 {
+                self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.02, 0.02);
+            }
         }
 
         self.shape4.rotate(&Point4::zero(), self.rotations4d);
@@ -213,6 +273,7 @@ impl Widget for &App {
     where
         Self: Sized,
     {
+        // actual tesseract render
         Graphix::new(
             &self.shape4.project_to_3d(),
             self.cam_pos,
@@ -220,35 +281,87 @@ impl Widget for &App {
         )
         .render(area, buf);
 
-        let default_color = 0.0;
-        let cursor_style = Style::new().fg(Color::Rgb(
-            (default_color + 155.0 * self.header_cursor_blink_state) as u8,
-            (default_color + 155.0 * self.header_cursor_blink_state) as u8,
-            (default_color + 155.0 * self.header_cursor_blink_state) as u8,
-        ));
-        let header_style = Style::new().fg(ratatui::style::Color::Red);
+        if !self.explore {
+            // header
+            let default_color = 0.0;
+            let cursor_style = Style::new().fg(Color::Rgb(
+                (default_color + 155.0 * self.header_cursor_blink_state) as u8,
+                (default_color + 155.0 * self.header_cursor_blink_state) as u8,
+                (default_color + 155.0 * self.header_cursor_blink_state) as u8,
+            ));
+            let header_style = Style::new().fg(ratatui::style::Color::Red);
 
-        let h = Header::new(self.header_text.clone(), header_style, cursor_style);
-        let h_height = (&h.height).clone() as u16;
-        let h_width = (&h.width).clone() as u16;
-        h.render(
-            Rect::new(area.width / 2 - h_width / 2, 5, h_width, h_height),
-            buf,
-        );
+            // confusion meter
+            let h = Header::new(self.header_text.clone(), header_style, cursor_style);
+            let h_height = (&h.height).clone() as u16;
+            let h_width = (&h.width).clone() as u16;
+            h.render(
+                Rect::new(area.width / 2 - h_width / 2, 5, h_width, h_height),
+                buf,
+            );
+            Gauge::default()
+                .gauge_style(Style::new().fg(Color::Red).bg(Color::Rgb(30, 30, 30)))
+                .percent(self.confusion)
+                .style(Style::new().fg(Color::White).bg(Color::Rgb(30, 30, 30)))
+                .block(
+                    Block::new()
+                        .borders(Borders::TOP | Borders::BOTTOM)
+                        .title(" Confusion ")
+                        .title_alignment(Alignment::Center)
+                        .title_style(Style::new().fg(Color::Red))
+                        .border_style(Style::new().red().bg(Color::Rgb(30, 30, 30)))
+                        .title_bottom(" w increase | s decrease | space pause | r reset | ? info "),
+                )
+                .render(Rect::new(area.width / 2 - 35, area.height - 6, 75, 5), buf);
+        } else {
+            let ar = Rect::new(area.width / 2 - 20, area.height - 6, 40, 2);
+            Clear.render(ar, buf);
+            Paragraph::new(format!(
+                "{:.2} {:.2} {:.2} {:.2} {:.2} {:.2}",
+                self.rotations4d.0,
+                self.rotations4d.1,
+                self.rotations4d.2,
+                self.rotations4d.3,
+                self.rotations4d.4,
+                self.rotations4d.5
+            ))
+            .block(Block::new().title(" Rotations ").title_alignment(Alignment::Center))
+            .style(Style::new().fg(Color::White).bg(Color::Rgb(30, 30, 30))).alignment(Alignment::Center)
+            .render(ar, buf);
+        }
 
-        Gauge::default()
-            .gauge_style(Style::new().fg(Color::Red).bg(Color::Rgb(30, 30, 30)))
-            .percent(self.confusion)
-            .style(Style::new().fg(Color::White).bg(Color::Rgb(30, 30, 30)))
-            .block(
-                Block::new()
-                    .borders(Borders::TOP | Borders::BOTTOM)
-                    .title(" Confusion ")
-                    .title_alignment(Alignment::Center)
-                    .title_style(Style::new().fg(Color::Red))
-                    .border_style(Style::new().red().bg(Color::Rgb(30, 30, 30)))
-                    .title_bottom(" w increase | s decrease | space pause | r reset "),
+        // help popup
+        if self.help {
+            let help_area = area.inner(Margin::new(40, 15));
+            Clear.render(help_area, buf);
+            Paragraph::new(
+                "In four dimensions you can rotate an object along six different _planes_.
+
+In contrast, in three dimensions you have three _lines_ (axes).
+
+\"Confusion\" adds/changes what rotations are being applied.
+
+For example: 
+    20% rotates along only one plane,
+    60% rotates along two different planes,
+    ...
+
+
+Additionally, by pressing Q you can enter \"explore\"-mode.
+In this mode you can use:
+    - w,a,s,d to move,
+    - arrow keys to look,
+    - h,j,k,l,n,m to inrease rotation on a plane of rotation,
+    - H,J,K,L,N,M to decrease rotation on a plane of rotation
+                ",
             )
-            .render(Rect::new(area.width / 2 - 35, area.height - 6, 75, 5), buf);
+            .block(
+                Block::bordered()
+                    .title(" What is going on here? ")
+                    .title_alignment(Alignment::Center),
+            )
+            .style(Style::new().fg(Color::White).bg(Color::Rgb(20, 20, 20)))
+            .render(help_area, buf);
+        }
     }
 }
