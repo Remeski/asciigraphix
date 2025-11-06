@@ -8,8 +8,8 @@ fn main() {
     let mut display = Display::new(
         DISPLAY_X,
         DISPLAY_Y,
-        Point(0.0, 0.0, -20.0),
-        Point(0.0, 0.0, 1.0),
+        Point(0.0, -20.0, 0.0),
+        Point(0.0, 1.0, 0.0),
         20.0,
     );
     let l = 2.0;
@@ -18,8 +18,8 @@ fn main() {
 
     // tesseract.rotate(&Point4(0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.52, 0.51, 0.00));
     loop {
-        // tesseract.rotate(&Point4(0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.02, 0.01, 0.00));
-        tesseract.rotate(&Point4(0.0, 0.0, 0.0, 0.0), (0.1, 0.0, 0.0, 0.00, 0.00, 0.00));
+        tesseract.rotate(&Point4(0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.02, 0.00, 0.00));
+        // tesseract.rotate(&Point4(0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.00, 0.00, 0.00));
 
         display.render_print(&tesseract.project_to_3d());
 

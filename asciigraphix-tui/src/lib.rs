@@ -99,7 +99,7 @@ impl App {
                 }
                 KeyCode::Char('?') => {
                     self.help = !self.help;
-                    self.paused = self.help;
+                    // self.paused = self.help;
                 }
                 KeyCode::Char('Q') => {
                     self.explore = !self.explore;
@@ -241,15 +241,15 @@ impl App {
             if self.confusion == 0 {
                 self.rotations4d = (0.00, 0.00, 0.0, 0.00, 0.0, 0.0);
             } else if self.confusion <= 20 {
-                self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.00, 0.0);
+                self.rotations4d = (0.00, 0.00, 0.00, 0.01, 0.00, 0.0);
             } else if self.confusion <= 40 {
-                self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.02, 0.0);
+                self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.01, 0.0);
             } else if self.confusion <= 60 {
-                self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.00, 0.02);
+                self.rotations4d = (0.00, 0.00, 0.00, 0.00, 0.00, 0.01);
             } else if self.confusion <= 80 {
-                self.rotations4d = (0.00, 0.0, 0.00, 0.02, 0.02, 0.00);
+                self.rotations4d = (0.00, 0.0, 0.00, 0.01, 0.01, 0.00);
             } else if self.confusion <= 100 {
-                self.rotations4d = (0.00, 0.00, 0.00, 0.02, 0.02, 0.02);
+                self.rotations4d = (0.01, 0.00, 0.00, 0.01, 0.01, 0.01);
             }
         }
 

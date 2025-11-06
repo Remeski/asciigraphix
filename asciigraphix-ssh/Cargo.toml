@@ -13,3 +13,4 @@ ssh-key = "0.6.7"
 tokio = "1.48.0"
 asciigraphix-tui = { path = "../asciigraphix-tui/" }
 rand_core = { version = "0.6.4", features = ["getrandom", "std"] }
+chrono = "0.4.42"

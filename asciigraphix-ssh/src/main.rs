@@ -123,7 +123,12 @@ impl AppServer {
 
 impl Server for AppServer {
     type Handler = Self;
-    fn new_client(&mut self, _: Option<std::net::SocketAddr>) -> Self {
+    fn new_client(&mut self, addr: Option<std::net::SocketAddr>) -> Self {
+        if let Some(s) = addr {
+            println!("[CONN] {}: New connection from {}", chrono::Utc::now(),s);
+        } else {
+            println!("[CONN] {}: New connection (unable to get address)", chrono::Utc::now())
+        }
         let s = self.clone();
         self.id += 1;
         s
@@ -173,10 +178,12 @@ impl Handler for AppServer {
                 self.clients.lock().await.remove(&self.id);
                 session.close(channel)?;
             }
-            [b] if b.is_ascii_graphic() || *b == b' ' => { self.send_key_press(KeyCode::Char(*b as char)).await; }
-            b"?" => {
-                self.send_key_press(KeyCode::Char('?')).await;
+            [b] if b.is_ascii_graphic() || *b == b' ' => {
+                self.send_key_press(KeyCode::Char(*b as char)).await;
             }
+            // b"?" => {
+            //     self.send_key_press(KeyCode::Char('?')).await;
+            // }
             b"\x1b[A" => {
                 self.send_key_press(KeyCode::Up).await;
             }
