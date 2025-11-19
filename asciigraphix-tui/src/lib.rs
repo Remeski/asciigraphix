@@ -6,13 +6,14 @@ use std::{
 use asciigraphix_core::shapes::{Point, Point4, Shape, Shape4};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::{
-    layout::{Alignment, Margin, Rect}, prelude::CrosstermBackend, style::{Color, Style, Stylize}, widgets::{Clear, Block, Borders, Gauge, Paragraph, Widget}, Frame, Terminal
+    layout::{Alignment, Margin, Rect}, prelude::CrosstermBackend, style::{Color, Style}, widgets::{Clear, Block, Borders, Gauge, Paragraph, Widget}, Frame, Terminal
 };
 
-use crate::{graphix::Graphix, header::Header};
+use crate::{graphix::Graphix, header::Header, utils::ColorWrapper};
 
 mod graphix;
 mod header;
+mod utils;
 
 pub struct App {
     shape: Shape,
@@ -32,6 +33,9 @@ pub struct App {
     exit: bool,
     help: bool,
     explore: bool,
+    primary_color: ColorWrapper,
+    fg_color: ColorWrapper,
+    bg_color: ColorWrapper
 }
 
 impl Default for App {
@@ -61,6 +65,9 @@ impl Default for App {
             exit: false,
             help: false,
             explore: false,
+            primary_color: ColorWrapper::rgb(192, 80, 80),
+            fg_color: ColorWrapper::rgb(240, 240, 240),
+            bg_color: ColorWrapper::rgb(30, 30, 30)
         }
     }
 }
@@ -278,6 +285,8 @@ impl Widget for &App {
             &self.shape4.project_to_3d(),
             self.cam_pos,
             self.cam_direction,
+            self.primary_color.lighten(1.5),
+            self.bg_color
         )
         .render(area, buf);
 
@@ -289,7 +298,7 @@ impl Widget for &App {
                 (default_color + 155.0 * self.header_cursor_blink_state) as u8,
                 (default_color + 155.0 * self.header_cursor_blink_state) as u8,
             ));
-            let header_style = Style::new().fg(ratatui::style::Color::Red);
+            let header_style = Style::new().fg(self.primary_color.into());
 
             // confusion meter
             let h = Header::new(self.header_text.clone(), header_style, cursor_style);
@@ -300,16 +309,16 @@ impl Widget for &App {
                 buf,
             );
             Gauge::default()
-                .gauge_style(Style::new().fg(Color::Red).bg(Color::Rgb(30, 30, 30)))
+                .gauge_style(Style::new().fg(self.primary_color.into()).bg(self.bg_color.into()))
                 .percent(self.confusion)
-                .style(Style::new().fg(Color::White).bg(Color::Rgb(30, 30, 30)))
+                .style(Style::new().fg(self.primary_color.into()).bg(self.bg_color.into()))
                 .block(
                     Block::new()
                         .borders(Borders::TOP | Borders::BOTTOM)
                         .title(" Confusion ")
                         .title_alignment(Alignment::Center)
-                        .title_style(Style::new().fg(Color::Red))
-                        .border_style(Style::new().red().bg(Color::Rgb(30, 30, 30)))
+                        .title_style(Style::new().fg(self.primary_color.into()))
+                        .border_style(Style::new().fg(self.primary_color.into()).bg(self.bg_color.into()))
                         .title_bottom(" w increase | s decrease | space pause | r reset | ? info "),
                 )
                 .render(Rect::new(area.width / 2 - 35, area.height - 6, 75, 5), buf);
@@ -326,7 +335,7 @@ impl Widget for &App {
                 self.rotations4d.5
             ))
             .block(Block::new().title(" Rotations ").title_alignment(Alignment::Center))
-            .style(Style::new().fg(Color::White).bg(Color::Rgb(30, 30, 30))).alignment(Alignment::Center)
+            .style(Style::new().fg(self.fg_color.into()).bg(self.bg_color.into())).alignment(Alignment::Center)
             .render(ar, buf);
         }
 
@@ -360,7 +369,7 @@ In this mode you can use:
                     .title(" What is going on here? ")
                     .title_alignment(Alignment::Center),
             )
-            .style(Style::new().fg(Color::White).bg(Color::Rgb(20, 20, 20)))
+            .style(Style::new().fg(self.fg_color.into()).bg(self.bg_color.into()))
             .render(help_area, buf);
         }
     }
