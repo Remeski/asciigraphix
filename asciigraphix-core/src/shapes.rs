@@ -219,6 +219,15 @@ pub struct Shape4 {
 }
 
 impl Shape {
+    pub fn new(vertices: Vec<Point>, edges: Vec<Edge>, faces: Vec<Face>) -> Self {
+        Self {
+            vertices,
+            edges,
+            faces,
+            center: None
+        }
+    }
+
     pub fn rotate(&mut self, pivot: &Point, (xrot, yrot, zrot): (f64, f64, f64)) {
         let (sin_xrot, cos_xrot) = xrot.sin_cos();
         let (sin_yrot, cos_yrot) = yrot.sin_cos();
