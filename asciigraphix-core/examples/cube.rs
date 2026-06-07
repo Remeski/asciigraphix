@@ -8,11 +8,11 @@ fn main() {
     let mut display = Display::new(
         DISPLAY_X,
         DISPLAY_Y,
-        Point(0.0, -10.0, -30.0),
-        Point(0.0, 0.0, 1.0),
-        20.0,
+        Point(0.0, 0.0, 10.0),
+        Point(0.0, 0.0, -1.0),
+        3.14 / 2.0,
     );
-    let mut cube = Shape::generate_cube(Point(0.0, 0.0, 0.0), 14.0);
+    let mut cube = Shape::generate_cube(Point(0.0, 0.0, 0.0), 5.0);
     loop {
         cube.rotate(
             &cube.center.clone().unwrap_or(Point(0.0, 0.0, 0.0)),

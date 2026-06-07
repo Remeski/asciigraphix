@@ -1,11 +1,117 @@
+use std::slice::Iter;
+
 use shapes::{Edge, Point};
 
 pub mod shapes;
 
+#[derive(Clone)]
+struct Cell {
+    pub x: usize,
+    pub y: usize,
+    pub char: char,
+    pub color: TextColor
+}
+
+impl Cell {
+    pub fn new(x: usize, y: usize, char: char) -> Self {
+        Self { x, y, char, color: TextColor::Red }
+    }
+}
+
+#[derive(Default, Clone)]
+struct FrameBuffer {
+    width: usize,
+    height: usize,
+    buffer: Vec<Cell>,
+}
+
+#[derive(Default, Clone)]
+struct ZBuffer {
+    width: usize,
+    height: usize,
+    buffer: Vec<Option<f64>>,
+}
+
+impl<'a> FrameBuffer {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            height,
+            buffer: Self::init_buffer(width, height),
+        }
+    }
+
+    fn init_buffer(width: usize, height: usize) -> Vec<Cell> {
+        let mut buffer = Vec::new();
+        for y in 0..height {
+            for x in 0..width {
+                buffer.push(Cell::new(x, y, ' '));
+            }
+        }
+        buffer
+    }
+
+    pub fn clear(&mut self) {
+        self.buffer = Self::init_buffer(self.width, self.height);
+    }
+
+    pub const fn idx(&self, x: usize, y: usize) -> usize {
+        y * self.width + x
+    }
+
+    pub fn xy(&'a self, x: usize, y: usize) -> &'a Cell {
+        let idx = self.idx(x, y);
+        &self.buffer[idx]
+    }
+
+    pub fn xy_mut(&'a mut self, x: usize, y: usize) -> &'a mut Cell {
+        let idx = self.idx(x, y);
+        &mut self.buffer[idx]
+    }
+
+    pub fn set_xy(&mut self, x: usize, y: usize, cell: Cell) {
+        let idx = self.idx(x, y);
+        self.buffer[idx] = cell;
+    }
+
+    pub fn iter(&mut self) -> Iter<'_, Cell> {
+        self.buffer.iter()
+    }
+}
+
+impl ZBuffer {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            height,
+            buffer: vec![None; width * height],
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.buffer = vec![None; self.width * self.height];
+    }
+
+    pub const fn idx(&self, x: usize, y: usize) -> usize {
+        y * self.width + x
+    }
+
+    pub fn xy(&self, x: usize, y: usize) -> Option<f64> {
+        let idx = y * self.width + x;
+        self.buffer[idx]
+    }
+
+    pub fn set_xy(&mut self, x: usize, y: usize, depth: Option<f64>) {
+        let idx = self.idx(x, y);
+        self.buffer[idx] = depth;
+    }
+}
+
 pub struct Display {
-    x_size: usize,
-    y_size: usize,
-    pixels: Vec<Vec<Option<f64>>>,
+    width: usize,
+    height: usize,
+    z_buffer: ZBuffer,
+    frame_buffer: FrameBuffer,
     pub cam_pos: Point,
     cam_unit_vectors: (Point, Point, Point),
     cam_focal: f64,
@@ -42,26 +148,26 @@ enum TextColor {
 
 impl Display {
     pub fn new(
-        x_size: usize,
-        y_size: usize,
+        width: usize,
+        height: usize,
         cam_pos: Point,
         cam_direction: Point,
-        cam_focal: f64,
+        cam_fov: f64,
     ) -> Display {
-        let pixels: Vec<Vec<Option<f64>>> = vec![vec![None; x_size]; y_size];
         Display {
-            x_size,
-            y_size,
-            pixels,
+            width,
+            height,
+            z_buffer: ZBuffer::new(width, height),
+            frame_buffer: FrameBuffer::new(width, height),
             cam_pos,
             cam_unit_vectors: Self::orthogonal_basis(cam_direction),
-            cam_focal,
+            cam_focal: height as f64 / 2.0 * 1.0 * (cam_fov / 2.0).tan(),
         }
     }
 
     fn orthogonal_basis(cam_direction: Point) -> (Point, Point, Point) {
-        // Pick a vector from xy-plane i.e. (x, y, 0) that is orthogonal to cam_direction
-        let a = Point(cam_direction.1, -cam_direction.0, 0.0).unit();
+        // Pick a vector from xz-plane i.e. (x, 0, z) that is orthogonal to cam_direction
+        let a = Point(-cam_direction.2, 0.0, cam_direction.0).unit();
         let b = cam_direction.cross(&a).unit();
         (cam_direction.unit(), a, b)
     }
@@ -75,36 +181,55 @@ impl Display {
 
     fn project_point(&mut self, point: &Point) {
         let cam_to_point = point.clone() - self.cam_pos.clone();
-        // dbg!(self.cam_unit_vectors.clone());
-        let depth = cam_to_point.dot(&self.cam_unit_vectors.0);
-        let x = cam_to_point.dot(&self.cam_unit_vectors.1);
-        let y = cam_to_point.dot(&self.cam_unit_vectors.2);
-        if depth <= 0.0 {
+
+        let z = cam_to_point.dot(&self.cam_unit_vectors.0);
+        if z <= 0.0 {
             return;
         }
-        // let x = self.cam_unit_vectors.clone().1 * dot_x;
-        // let y = self.cam_unit_vectors.clone().2 * dot_y;
-        // let z = self.cam_unit_vectors.clone().0 * dot_z;
 
-        let x_pixel = self.cam_focal * x / depth;
-        let y_pixel = self.cam_focal * y / depth;
-        let x_pixel = x_pixel + (self.x_size as f64 / 2.0);
-        let y_pixel = y_pixel + (self.y_size as f64 / 2.0);
+        let x = cam_to_point.dot(&self.cam_unit_vectors.1);
+        let y = cam_to_point.dot(&self.cam_unit_vectors.2);
+
+        let x_pixel = self.cam_focal * x / z;
+        let y_pixel = self.cam_focal * y / z;
+
+        let x_pixel = x_pixel + (self.width as f64 / 2.0);
+        let y_pixel = y_pixel + (self.height as f64 / 2.0);
+
         if (x_pixel < 0.0) || (y_pixel < 0.0) {
             return;
         }
+
         let x_pixel = x_pixel.round() as usize;
         let y_pixel = y_pixel.round() as usize;
-        if (x_pixel >= self.x_size) || (y_pixel >= self.y_size) {
+
+        if (x_pixel >= self.width) || (y_pixel >= self.height) {
             return;
         }
-        let cur_depth = self.pixels[y_pixel][x_pixel];
-        if let Some(k) = cur_depth {
-            if depth > k {
-                self.pixels[y_pixel][x_pixel] = Some(depth);
+
+        let cur_depth = self.z_buffer.xy(x_pixel, y_pixel);
+        match cur_depth {
+            Some(k) if z > k => self.z_buffer.set_xy(x_pixel, y_pixel, Some(z)),
+            None => self.z_buffer.set_xy(x_pixel, y_pixel, Some(z)),
+            _ => {
+                return;
             }
+        }
+
+        let cell = self.frame_buffer.xy_mut(x_pixel, y_pixel);
+        let color = TextColor::Cyan;
+        if z < 10.0 {
+            cell.char = '#';
+            cell.color = color;
+        } else if z < 30.0 {
+            cell.char = '*';
+            cell.color = color;
+        } else if z < 50.0 {
+            cell.char = '-';
+            cell.color = color;
         } else {
-            self.pixels[y_pixel][x_pixel] = Some(depth);
+            cell.char = '.';
+            cell.color = color;
         }
     }
 
@@ -139,7 +264,6 @@ impl Display {
     // }
 
     fn project(&mut self, shape: &shapes::Shape) {
-        self.pixels = vec![vec![None; self.x_size]; self.y_size];
         self.project_vertices(&shape.vertices);
         self.project_edges(&shape.vertices, &shape.edges);
         // self.project_faces(&shape.vertices, &shape.faces);
@@ -157,49 +281,40 @@ impl Display {
     // Vec<(depth, color)>
     // for now color is set to some default
     pub fn render(&mut self, shape: &shapes::Shape) -> Vec<(f32, u32)> {
-        const FG: RGB = RGB(254,0,0);
-        const BG: RGB = RGB(10,10,10);
+        const FG: RGB = RGB(254, 0, 0);
+        const BG: RGB = RGB(10, 10, 10);
         self.project(&shape);
         let mut result = Vec::new();
-        for row in &self.pixels {
-            for z in row {
-                match z {
-                    Some(p) => {
-                        result.push(((*p as f32).clone(), FG.to_u32()));
-                    }
-                    None => {
-                        result.push((0.0 as f32, BG.to_u32()));
-                    }
+
+        for Cell { x, y, .. } in self.frame_buffer.iter() {
+            let z = self.z_buffer.xy(*x, *y);
+            match z {
+                Some(p) => {
+                    result.push(((p as f32).clone(), FG.to_u32()));
+                }
+                None => {
+                    result.push((0.0 as f32, BG.to_u32()));
                 }
             }
         }
+
         result
     }
 
     pub fn render_print(&mut self, shape: &shapes::Shape) {
+        self.frame_buffer.clear();
+        self.z_buffer.clear();
         self.project(&shape);
         Self::clear_screen();
-        let color = TextColor::Cyan;
-        for row in &self.pixels {
-            for z in row {
-                match z {
-                    Some(p) => {
-                        if *p < 10.0 {
-                            Self::colored("#", color);
-                        } else if *p < 30.0 {
-                            Self::colored("*", color);
-                        } else if *p < 50.0 {
-                            Self::colored("-", color);
-                        } else {
-                            Self::colored(".", color);
-                        }
-                    }
-                    None => {
-                        print!(" ");
-                    }
+        for Cell { x, y, char, color } in self.frame_buffer.iter() {
+            let z = self.z_buffer.xy(*x, *y);
+            match (*x, char) {
+                (0, _) => Self::colored("|", *color),
+                (i, _) if i == self.width - 1 => {
+                    Self::colored("|\r\n", *color);
                 }
+                (_, char) => {Self::colored(&char.to_string(), *color);}
             }
-            println!()
         }
     }
 }
