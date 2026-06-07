@@ -95,7 +95,9 @@ impl Point {
             1 => Self(1.0, 0.0, 0.0),
             2 => Self(0.0, 1.0, 0.0),
             3 => Self(0.0, 0.0, 1.0),
-            _ => { panic!("invalid e vector") }
+            _ => {
+                panic!("invalid e vector")
+            }
         }
     }
 
@@ -144,7 +146,7 @@ impl Point {
         // let old_1 = self.1.clone();
         // self.0 = phi.cos() * old_0 - phi.sin() * old_1;
         // self.1 = phi.sin() * old_0 + phi.cos() * old_1;
-        
+
         // rotate in c = (-y, x, 0)/r,p = (x,y,0)/r ,k = (0,0,1) basis where coordinates c = 0, p = r, k = z
         let r = (self.0.powf(2.0) + self.1.powf(2.0)).sqrt();
         let z = self.2.clone();
@@ -167,7 +169,9 @@ impl Point4 {
             2 => Self(0.0, 1.0, 0.0, 0.0),
             3 => Self(0.0, 0.0, 1.0, 0.0),
             4 => Self(0.0, 0.0, 0.0, 1.0),
-            _ => { panic!("invalid e vector") }
+            _ => {
+                panic!("invalid e vector")
+            }
         }
     }
 
@@ -224,7 +228,7 @@ impl Shape {
             vertices,
             edges,
             faces,
-            center: None
+            center: None,
         }
     }
 
@@ -296,9 +300,10 @@ impl Shape {
     pub fn generate_cube(center: Point, length: f64) -> Shape {
         let mut vertices: Vec<Point> = Vec::new();
         let mut edges: Vec<Edge> = Vec::new();
-        let mut faces: Vec<Face> = Vec::new();
+        let faces: Vec<Face> = Vec::new();
 
         let half = length / 2.0;
+
         // bottom
         vertices.push(center.clone() + Point(-half, -half, -half)); // 0
         vertices.push(center.clone() + Point(-half, -half, half)); // 1
@@ -308,6 +313,7 @@ impl Shape {
         edges.push(Edge(1, 2));
         edges.push(Edge(2, 3));
         edges.push(Edge(0, 3));
+
         // top
         vertices.push(center.clone() + Point(-half, half, -half)); // 4
         vertices.push(center.clone() + Point(-half, half, half)); // 5
@@ -317,14 +323,73 @@ impl Shape {
         edges.push(Edge(5, 6));
         edges.push(Edge(6, 7));
         edges.push(Edge(4, 7));
+
         // left
         edges.push(Edge(0, 4));
         edges.push(Edge(1, 5));
+
         // right
         edges.push(Edge(2, 6));
         edges.push(Edge(3, 7));
 
+        Shape {
+            vertices,
+            edges,
+            faces,
+            center: Some(center),
+        }
+    }
+
+    pub fn generate_cube_filled(center: Point, length: f64) -> Shape {
+        let mut vertices: Vec<Point> = Vec::new();
+        let mut edges: Vec<Edge> = Vec::new();
+        let mut faces: Vec<Face> = Vec::new();
+
+        let half = length / 2.0;
+
+        // bottom
+        vertices.push(center.clone() + Point(-half, -half, -half)); // 0
+        vertices.push(center.clone() + Point(-half, -half, half)); // 1
+        vertices.push(center.clone() + Point(half, -half, half)); // 2
+        vertices.push(center.clone() + Point(half, -half, -half)); // 3
+        edges.push(Edge(0, 1));
+        edges.push(Edge(1, 2));
+        edges.push(Edge(2, 3));
+        edges.push(Edge(0, 3));
         faces.push(Face(0, 1, 2));
+        faces.push(Face(0, 2, 3));
+
+        // top
+        vertices.push(center.clone() + Point(-half, half, -half)); // 4
+        vertices.push(center.clone() + Point(-half, half, half)); // 5
+        vertices.push(center.clone() + Point(half, half, half)); // 6
+        vertices.push(center.clone() + Point(half, half, -half)); // 7
+        edges.push(Edge(4, 5));
+        edges.push(Edge(5, 6));
+        edges.push(Edge(6, 7));
+        edges.push(Edge(4, 7));
+        faces.push(Face(4, 5, 6));
+        faces.push(Face(4, 6, 7));
+
+        // left
+        edges.push(Edge(0, 4));
+        edges.push(Edge(1, 5));
+        faces.push(Face(0, 1, 5));
+        faces.push(Face(0, 4, 5));
+
+        // right
+        edges.push(Edge(2, 6));
+        edges.push(Edge(3, 7));
+        faces.push(Face(2, 3, 7));
+        faces.push(Face(2, 6, 7));
+
+        // front
+        faces.push(Face(0, 4, 7));
+        faces.push(Face(0, 3, 7));
+
+        // back
+        faces.push(Face(1, 5, 6));
+        faces.push(Face(1, 2, 6));
 
         Shape {
             vertices,
@@ -451,10 +516,10 @@ impl Shape4 {
         edges.push(Edge(10, 14)); // c + d to b + c + d
 
         vertices.push(start + a + b + c + d); // 15
-        edges.push(Edge(11,15)); // a + b + c to a + b + c + d
-        edges.push(Edge(12,15)); // a + b + d to a + b + c + d
-        edges.push(Edge(13,15)); // a + c + d to a + b + c + d
-        edges.push(Edge(14,15)); // b + c + d to a + b + c + d
+        edges.push(Edge(11, 15)); // a + b + c to a + b + c + d
+        edges.push(Edge(12, 15)); // a + b + d to a + b + c + d
+        edges.push(Edge(13, 15)); // a + c + d to a + b + c + d
+        edges.push(Edge(14, 15)); // b + c + d to a + b + c + d
 
         Shape4 {
             vertices,
