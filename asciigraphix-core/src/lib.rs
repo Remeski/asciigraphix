@@ -185,13 +185,6 @@ impl Display {
         (cam_direction.unit(), a, b)
     }
 
-    fn clear_screen() {
-        // clear screen
-        print!("\x1B[2J\x1B[1;1H");
-        // hide cursor
-        print!("\x1B[?25l");
-    }
-
     fn world_to_viewport(&self, point: &Point) -> ViewportPoint {
         let cam_to_point = point.clone() - self.cam_pos.clone();
 
@@ -236,7 +229,7 @@ impl Display {
         }
 
         let cell = self.frame_buffer.xy_mut(x, y);
-        let color = TextColor::Cyan;
+        let color = TextColor::Red;
         if z < 10.0 {
             cell.char = '#';
             cell.color = color;
@@ -293,10 +286,16 @@ impl Display {
             x_start += invslope1;
             x_end += invslope2;
 
-            // let dx = x_start - x_end;
-            for x in (x_start.round() as usize)..(x_end.round() as usize) {
+            let dx = x_end - x_start;
+            for i in 0..100 {
+                let x = x_start + dx * 0.01 * i as f64;
+                let x = x.round() as usize;
                 self.set_viewport_point(x, y, 1.0);
             }
+
+            // for x in (x_start.round() as usize)..(x_end.round() as usize) {
+            //     self.set_viewport_point(x, y, 1.0);
+            // }
         }
     }
 
@@ -319,10 +318,17 @@ impl Display {
             x_start += invslope1;
             x_end += invslope2;
 
-            // let dx = x_start - x_end;
-            for x in (x_start.round() as usize)..(x_end.round() as usize) {
+            let dx = x_end - x_start;
+            for i in 0..100 {
+                let x = x_start + dx * 0.01 * i as f64;
+                let x = x.round() as usize;
                 self.set_viewport_point(x, y, 1.0);
             }
+
+            // let dx = x_start - x_end;
+            // for x in (x_start.round() as usize)..(x_end.round() as usize) {
+            //     self.set_viewport_point(x, y, 1.0);
+            // }
         }
     }
 
@@ -397,12 +403,37 @@ impl Display {
         self.project_vertices(&shape.vertices);
     }
 
+    pub fn clear_screen() {
+        // clear screen
+        print!("\x1B[2J\x1B[1;1H");
+        // hide cursor
+        print!("\x1B[?25l");
+    }
+
+    fn set_terminal_char(x: usize, y: usize, char: String) {
+        // move cursor
+        print!("\x1B[{};{}H", y, x);
+        print!("\x1B[{};{}f", y, x);
+        // delete character
+        print!("");
+        print!("{}", char);
+    }
+
     fn colored(text: &str, color: TextColor) {
         match color {
             TextColor::Red => print!("\x1b[31m{}\x1b[0m", text),
             TextColor::Cyan => print!("\x1b[36m{}\x1b[0m", text),
             TextColor::BrightCyan => print!("\x1b[96m{}\x1b[0m", text),
             TextColor::BrightGreen => print!("\x1b[92m{}\x1b[0m", text),
+        }
+    }
+
+    fn colored_string(text: &str, color: TextColor) -> String {
+        match color {
+            TextColor::Red => format!("\x1b[31m{}\x1b[0m", text),
+            TextColor::Cyan => format!("\x1b[36m{}\x1b[0m", text),
+            TextColor::BrightCyan => format!("\x1b[96m{}\x1b[0m", text),
+            TextColor::BrightGreen => format!("\x1b[92m{}\x1b[0m", text),
         }
     }
 
@@ -442,12 +473,32 @@ impl Display {
         } in self.frame_buffer.iter()
         {
             match (*x, char) {
-                (0, _) => Self::colored("|", *color),
+                // (0, _) => Self::colored("|", *color),
                 (i, _) if i == self.width - 1 => {
-                    Self::colored("|\r\n", *color);
+                    Self::colored("\r\n", *color);
                 }
                 (_, char) => {
                     Self::colored(&char.to_string(), *color);
+                }
+            }
+        }
+    }
+
+    pub fn render_terminal(&mut self, shape: &shapes::Shape) {
+        self.frame_buffer.clear();
+        self.z_buffer.clear();
+        self.project(&shape);
+        for Cell {
+            x,
+            y,
+            char,
+            color,
+        } in self.frame_buffer.iter()
+        {
+            match (*x, char) {
+                // (0, _) => Self::colored("|", *color),
+                (_, char) => {
+                    Self::set_terminal_char(*x, *y, Self::colored_string(&char.to_string(), *color));
                 }
             }
         }
