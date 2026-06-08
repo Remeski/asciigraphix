@@ -3,10 +3,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-use asciigraphix_core::shapes::{Point, Point4, Shape, Shape4};
+use asciigraphix_core::{math::{Point, Point4}, shapes::Shape4};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::{
-    layout::{Alignment, Margin, Rect}, prelude::CrosstermBackend, style::{Color, Style, Stylize}, widgets::{Clear, Block, Borders, Gauge, Paragraph, Widget}, Frame, Terminal
+    Frame, Terminal,
+    layout::{Alignment, Margin, Rect},
+    prelude::CrosstermBackend,
+    style::{Color, Style, Stylize},
+    widgets::{Block, Borders, Clear, Gauge, Paragraph, Widget},
 };
 
 use crate::{graphix::Graphix, header::Header};

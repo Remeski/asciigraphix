@@ -1,6 +1,5 @@
 use asciigraphix_core::{
-    Display,
-    shapes::{Face, Point, Shape},
+    Display, math::Point, shapes::{Face, Shape}
 };
 
 fn main() {
@@ -13,14 +12,15 @@ fn main() {
         Point(0.0, 0.0, -1.0),
         3.14 / 2.0,
     );
-    let mut shape = Shape::new(
+    let shape = Shape::new(
         vec![
-            Point(-1.0, 0.5, 0.0),
-            Point(2.0, -0.5, 0.0),
+            Point(0.0, 0.0, 0.0),
+            Point(1.0, 0.0, 0.0),
             Point(1.0, 1.0, 0.0),
+            Point(0.0, 1.0, 0.0),
         ],
         vec![],
-        vec![Face(0, 1, 2)],
+        vec![Face(2,3,0), Face(0,1,2)],
     );
     // let mut cube = Shape::generate_cube(Point(0.0, 0.0, 0.0), 1.0);
     // cube.faces = vec![Face(0, 1, 2)];

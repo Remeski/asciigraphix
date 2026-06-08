@@ -1,5 +1,5 @@
 use asciigraphix_core::{
-    shapes::{Point, Shape}, Display
+    Display, math::Point, shapes::Shape
 };
 
 fn main() {

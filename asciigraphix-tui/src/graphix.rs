@@ -1,5 +1,8 @@
-use asciigraphix_core::{shapes::{Point, Shape}, Display};
-use ratatui::{style::{Color, Style, Stylize}, widgets::Widget};
+use asciigraphix_core::{Display, math::Point, shapes::Shape};
+use ratatui::{
+    style::{Color, Style, Stylize},
+    widgets::Widget,
+};
 
 pub struct Graphix<'a> {
     shape: &'a Shape,

@@ -1,9 +1,10 @@
 use std::slice::Iter;
 
-use shapes::{Edge, Point};
+use shapes::Edge;
 
-use crate::shapes::Face;
+use crate::{math::Point, shapes::Face};
 
+pub mod math;
 pub mod shapes;
 
 #[derive(Clone)]
@@ -146,7 +147,7 @@ mod tests {
 
 #[derive(Copy, Clone)]
 #[allow(dead_code)]
-enum TextColor {
+pub enum TextColor {
     Red,
     Cyan,
     BrightCyan,
