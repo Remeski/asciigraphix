@@ -297,6 +297,20 @@ impl Shape {
         }
     }
 
+    pub fn generate_cube_colorful(center: Point, length: f64) -> (Shape, Vec<TextColor>) {
+        let shape = Self::generate_cube_filled(center, length);
+        let colors = vec![
+            // TextColor::Red,
+            // TextColor::Red,
+            TextColor::BrightGreen,
+            TextColor::BrightGreen,
+            TextColor::Cyan,
+            TextColor::Cyan,
+        ];
+
+        (shape, colors)
+    }
+
     pub fn generate_cube(center: Point, length: f64) -> Shape {
         let mut vertices: Vec<Point> = Vec::new();
         let mut edges: Vec<Edge> = Vec::new();
