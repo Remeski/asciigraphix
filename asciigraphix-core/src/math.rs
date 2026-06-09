@@ -87,6 +87,12 @@ impl std::ops::Mul<f64> for Point4 {
     }
 }
 
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1 && self.2 == other.2
+    }
+}
+
 impl Point {
     pub fn e(i: usize) -> Self {
         match i {
@@ -101,6 +107,23 @@ impl Point {
 
     pub fn zero() -> Self {
         Point(0.0, 0.0, 0.0)
+    }
+
+    /// Returns barycentric coordinates within triangle with vertices `v1`, `v2`, `v3`.
+    pub fn to_barycentric(&self, v1: Point, v2: Point, v3: Point) -> Point {
+        let v21 = v2 - v1;
+        let v31 = v3 - v1;
+        let vp1 = *self - v1;
+
+        let v21_inv = 1.0 / v21.dot(&v21);
+        let w = vp1 - v21 * (vp1.dot(&v21) * v21_inv);
+        let v = v31 - v21 * (v31.dot(&v21) * v21_inv);
+
+        let m3 = v.dot(&w) / v.dot(&v);
+        let m2 = (vp1 - v31 * m3).dot(&v21) * v21_inv;
+        let m1 = 1.0 - m2 - m3;
+
+        Point(m1, m2, m3)
     }
 
     pub fn set(&mut self, p: Point) {
@@ -197,3 +220,19 @@ impl Point4 {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::math::Point;
+
+    #[test]
+    fn test_barycentric() {
+        let v1 = Point(0.0, 0.0, 0.0);
+        let v2 = Point(1.0, 0.0, 0.0);
+        let v3 = Point(0.0, 1.0, 0.0);
+        let p = Point(0.25, 0.25, 0.0);
+        let bary = p.to_barycentric(v1, v2, v3);
+        assert_eq!(bary, Point(0.5, 0.25, 0.25));
+        assert_eq!(bary.0 + bary.1 + bary.2, 1.0);
+        assert_eq!(v1 * bary.0 + v2 * bary.1 + v3 * bary.2, p);
+    }
+}
