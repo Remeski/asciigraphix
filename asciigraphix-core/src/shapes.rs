@@ -2,13 +2,35 @@ use crate::{TextColor, math::{Point, Point4}};
 
 const VERTEX_DENSITY: usize = 100;
 
+#[derive(Debug, Clone)]
+pub struct Rgb(pub u8, pub u8, pub u8);
+
+impl From<Rgb> for TextColor {
+    fn from(v: Rgb) -> Self {
+        Self::Rgb(v.0, v.1, v.2)
+    }
+}
+
 // This holds the indexes of two points forming an edge.
 #[derive(Debug, Clone)]
-pub struct Edge(pub usize, pub usize);
+pub struct Edge(pub usize, pub usize, pub Option<Rgb>);
+
+impl Edge {
+    pub fn new(index1: usize, index2: usize) -> Self {
+        Self(index1, index2, None)
+    }
+}
+
 
 // This holds the indexes of points forming a face.
 #[derive(Debug, Clone)]
-pub struct Face(pub usize, pub usize, pub usize);
+pub struct Face(pub usize, pub usize, pub usize, pub Option<Rgb>);
+
+impl Face {
+    pub fn new(index1: usize, index2: usize, index3: usize) -> Self {
+        Self(index1, index2, index3, None)
+    }
+}
 
 #[derive(Debug)]
 pub struct Shape {
@@ -94,24 +116,32 @@ impl Shape {
     pub fn generate_line(start: Point, end: Point) -> Shape {
         Shape {
             vertices: vec![start, end],
-            edges: vec![Edge(0, 1)],
+            edges: vec![Edge::new(0, 1)],
             faces: Vec::new(),
             center: None,
         }
     }
 
-    pub fn generate_cube_colorful(center: Point, length: f64) -> (Shape, Vec<TextColor>) {
-        let shape = Self::generate_cube_filled(center, length);
-        let colors = vec![
-            // TextColor::Red,
-            // TextColor::Red,
-            TextColor::BrightGreen,
-            TextColor::BrightGreen,
-            TextColor::Cyan,
-            TextColor::Cyan,
-        ];
+    pub fn generate_cube_colorful(center: Point, length: f64) -> Self {
+        let mut shape = Self::generate_cube_filled(center, length);
+        let edges = &mut shape.edges;
+        let faces = &mut shape.faces;
 
-        (shape, colors)
+        edges[0].2 = Some(Rgb(0, 125, 100));
+        edges[1].2 = Some(Rgb(0, 125, 100));
+        edges[2].2 = Some(Rgb(0, 125, 100));
+        edges[3].2 = Some(Rgb(0, 125, 100));
+        faces[0].3 = Some(Rgb(0, 125, 100));
+        faces[1].3 = Some(Rgb(0, 125, 100));
+
+        edges[4].2 = Some(Rgb(0, 0, 100));
+        edges[5].2 = Some(Rgb(0, 0, 100));
+        edges[6].2 = Some(Rgb(0, 0, 100));
+        edges[7].2 = Some(Rgb(0, 0, 100));
+        faces[2].3 = Some(Rgb(0, 0, 100));
+        faces[3].3 = Some(Rgb(0, 0, 100));
+
+        shape
     }
 
     pub fn generate_cube(center: Point, length: f64) -> Shape {
@@ -126,28 +156,28 @@ impl Shape {
         vertices.push(center.clone() + Point(-half, -half, half)); // 1
         vertices.push(center.clone() + Point(half, -half, half)); // 2
         vertices.push(center.clone() + Point(half, -half, -half)); // 3
-        edges.push(Edge(0, 1));
-        edges.push(Edge(1, 2));
-        edges.push(Edge(2, 3));
-        edges.push(Edge(0, 3));
+        edges.push(Edge::new(0, 1));
+        edges.push(Edge::new(1, 2));
+        edges.push(Edge::new(2, 3));
+        edges.push(Edge::new(0, 3));
 
         // top
         vertices.push(center.clone() + Point(-half, half, -half)); // 4
         vertices.push(center.clone() + Point(-half, half, half)); // 5
         vertices.push(center.clone() + Point(half, half, half)); // 6
         vertices.push(center.clone() + Point(half, half, -half)); // 7
-        edges.push(Edge(4, 5));
-        edges.push(Edge(5, 6));
-        edges.push(Edge(6, 7));
-        edges.push(Edge(4, 7));
+        edges.push(Edge::new(4, 5));
+        edges.push(Edge::new(5, 6));
+        edges.push(Edge::new(6, 7));
+        edges.push(Edge::new(4, 7));
 
         // left
-        edges.push(Edge(0, 4));
-        edges.push(Edge(1, 5));
+        edges.push(Edge::new(0, 4));
+        edges.push(Edge::new(1, 5));
 
         // right
-        edges.push(Edge(2, 6));
-        edges.push(Edge(3, 7));
+        edges.push(Edge::new(2, 6));
+        edges.push(Edge::new(3, 7));
 
         Shape {
             vertices,
@@ -169,44 +199,44 @@ impl Shape {
         vertices.push(center.clone() + Point(-half, -half, half)); // 1
         vertices.push(center.clone() + Point(half, -half, half)); // 2
         vertices.push(center.clone() + Point(half, -half, -half)); // 3
-        edges.push(Edge(0, 1));
-        edges.push(Edge(1, 2));
-        edges.push(Edge(2, 3));
-        edges.push(Edge(0, 3));
-        faces.push(Face(0, 1, 2));
-        faces.push(Face(0, 2, 3));
+        edges.push(Edge::new(0, 1));
+        edges.push(Edge::new(1, 2));
+        edges.push(Edge::new(2, 3));
+        edges.push(Edge::new(0, 3));
+        faces.push(Face::new(0, 1, 2));
+        faces.push(Face::new(0, 2, 3));
 
         // top
         vertices.push(center.clone() + Point(-half, half, -half)); // 4
         vertices.push(center.clone() + Point(-half, half, half)); // 5
         vertices.push(center.clone() + Point(half, half, half)); // 6
         vertices.push(center.clone() + Point(half, half, -half)); // 7
-        edges.push(Edge(4, 5));
-        edges.push(Edge(5, 6));
-        edges.push(Edge(6, 7));
-        edges.push(Edge(4, 7));
-        faces.push(Face(4, 5, 6));
-        faces.push(Face(4, 6, 7));
+        edges.push(Edge::new(4, 5));
+        edges.push(Edge::new(5, 6));
+        edges.push(Edge::new(6, 7));
+        edges.push(Edge::new(4, 7));
+        faces.push(Face::new(4, 5, 6));
+        faces.push(Face::new(4, 6, 7));
 
         // left
-        edges.push(Edge(0, 4));
-        edges.push(Edge(1, 5));
-        faces.push(Face(0, 1, 5));
-        faces.push(Face(0, 4, 5));
+        edges.push(Edge::new(0, 4));
+        edges.push(Edge::new(1, 5));
+        faces.push(Face::new(0, 1, 5));
+        faces.push(Face::new(0, 4, 5));
 
         // right
-        edges.push(Edge(2, 6));
-        edges.push(Edge(3, 7));
-        faces.push(Face(2, 3, 7));
-        faces.push(Face(2, 6, 7));
+        edges.push(Edge::new(2, 6));
+        edges.push(Edge::new(3, 7));
+        faces.push(Face::new(2, 3, 7));
+        faces.push(Face::new(2, 6, 7));
 
         // front
-        faces.push(Face(0, 4, 7));
-        faces.push(Face(0, 3, 7));
+        faces.push(Face::new(0, 4, 7));
+        faces.push(Face::new(0, 3, 7));
 
         // back
-        faces.push(Face(1, 5, 6));
-        faces.push(Face(1, 2, 6));
+        faces.push(Face::new(1, 5, 6));
+        faces.push(Face::new(1, 2, 6));
 
         Shape {
             vertices,
@@ -243,28 +273,28 @@ impl Shape {
         let mut edges: Vec<Edge> = Vec::new();
         vertices.push(start); // 0
         vertices.push(start + a); // 1
-        edges.push(Edge(0, 1));
+        edges.push(Edge::new(0, 1));
 
         vertices.push(start + c); // 2
         vertices.push(start + c + a); // 3
-        edges.push(Edge(2, 3));
-        edges.push(Edge(0, 2));
-        edges.push(Edge(1, 3));
+        edges.push(Edge::new(2, 3));
+        edges.push(Edge::new(0, 2));
+        edges.push(Edge::new(1, 3));
 
         vertices.push(start + b); // 4
         vertices.push(start + b + a); // 5
-        edges.push(Edge(4, 5));
+        edges.push(Edge::new(4, 5));
 
         vertices.push(start + b + c); // 6
         vertices.push(start + b + c + a); // 7
-        edges.push(Edge(6, 7));
-        edges.push(Edge(4, 6));
-        edges.push(Edge(5, 7));
+        edges.push(Edge::new(6, 7));
+        edges.push(Edge::new(4, 6));
+        edges.push(Edge::new(5, 7));
 
-        edges.push(Edge(0, 4));
-        edges.push(Edge(1, 5));
-        edges.push(Edge(2, 6));
-        edges.push(Edge(3, 7));
+        edges.push(Edge::new(0, 4));
+        edges.push(Edge::new(1, 5));
+        edges.push(Edge::new(2, 6));
+        edges.push(Edge::new(3, 7));
 
         Shape {
             vertices,
@@ -291,10 +321,10 @@ impl Shape4 {
         vertices.push(start + b); // 2
         vertices.push(start + c); // 3
         vertices.push(start + d); // 4
-        edges.push(Edge(0, 1));
-        edges.push(Edge(0, 2));
-        edges.push(Edge(0, 3));
-        edges.push(Edge(0, 4));
+        edges.push(Edge::new(0, 1));
+        edges.push(Edge::new(0, 2));
+        edges.push(Edge::new(0, 3));
+        edges.push(Edge::new(0, 4));
 
         vertices.push(start + a + d); // 5
         vertices.push(start + a + b); // 6
@@ -302,41 +332,41 @@ impl Shape4 {
         vertices.push(start + b + c); // 8
         vertices.push(start + b + d); // 9
         vertices.push(start + c + d); // 10
-        edges.push(Edge(1, 5)); // a to a + d
-        edges.push(Edge(1, 6)); // a to a + b
-        edges.push(Edge(1, 7)); // a to a + c
-        edges.push(Edge(2, 6)); // b to a + b
-        edges.push(Edge(2, 8)); // b to b + c
-        edges.push(Edge(2, 9)); // b to b + d
-        edges.push(Edge(3, 7)); // c to a + c
-        edges.push(Edge(3, 8)); // c to b + c
-        edges.push(Edge(3, 10)); // c to c + d
-        edges.push(Edge(4, 5)); // d to a + d
-        edges.push(Edge(4, 9)); // d to b + d
-        edges.push(Edge(4, 10)); // d to c + d
+        edges.push(Edge::new(1, 5)); // a to a + d
+        edges.push(Edge::new(1, 6)); // a to a + b
+        edges.push(Edge::new(1, 7)); // a to a + c
+        edges.push(Edge::new(2, 6)); // b to a + b
+        edges.push(Edge::new(2, 8)); // b to b + c
+        edges.push(Edge::new(2, 9)); // b to b + d
+        edges.push(Edge::new(3, 7)); // c to a + c
+        edges.push(Edge::new(3, 8)); // c to b + c
+        edges.push(Edge::new(3, 10)); // c to c + d
+        edges.push(Edge::new(4, 5)); // d to a + d
+        edges.push(Edge::new(4, 9)); // d to b + d
+        edges.push(Edge::new(4, 10)); // d to c + d
 
         vertices.push(start + a + b + c); // 11
         vertices.push(start + a + b + d); // 12
         vertices.push(start + a + c + d); // 13
         vertices.push(start + b + c + d); // 14
-        edges.push(Edge(5, 12)); // a + d to a + b + d
-        edges.push(Edge(5, 13)); // a + d to a + c + d
-        edges.push(Edge(6, 11)); // a + b to a + b + c
-        edges.push(Edge(6, 12)); // a + b to a + b + d
-        edges.push(Edge(7, 11)); // a + c to a + b + c
-        edges.push(Edge(7, 13)); // a + c to a + c + d
-        edges.push(Edge(8, 11)); // b + c to a + b + c
-        edges.push(Edge(8, 14)); // b + c to b + c + d
-        edges.push(Edge(9, 12)); // b + d to a + b + d
-        edges.push(Edge(9, 14)); // b + d to b + c + d
-        edges.push(Edge(10, 13)); // c + d to a + c + d
-        edges.push(Edge(10, 14)); // c + d to b + c + d
+        edges.push(Edge::new(5, 12)); // a + d to a + b + d
+        edges.push(Edge::new(5, 13)); // a + d to a + c + d
+        edges.push(Edge::new(6, 11)); // a + b to a + b + c
+        edges.push(Edge::new(6, 12)); // a + b to a + b + d
+        edges.push(Edge::new(7, 11)); // a + c to a + b + c
+        edges.push(Edge::new(7, 13)); // a + c to a + c + d
+        edges.push(Edge::new(8, 11)); // b + c to a + b + c
+        edges.push(Edge::new(8, 14)); // b + c to b + c + d
+        edges.push(Edge::new(9, 12)); // b + d to a + b + d
+        edges.push(Edge::new(9, 14)); // b + d to b + c + d
+        edges.push(Edge::new(10, 13)); // c + d to a + c + d
+        edges.push(Edge::new(10, 14)); // c + d to b + c + d
 
         vertices.push(start + a + b + c + d); // 15
-        edges.push(Edge(11, 15)); // a + b + c to a + b + c + d
-        edges.push(Edge(12, 15)); // a + b + d to a + b + c + d
-        edges.push(Edge(13, 15)); // a + c + d to a + b + c + d
-        edges.push(Edge(14, 15)); // b + c + d to a + b + c + d
+        edges.push(Edge::new(11, 15)); // a + b + c to a + b + c + d
+        edges.push(Edge::new(12, 15)); // a + b + d to a + b + c + d
+        edges.push(Edge::new(13, 15)); // a + c + d to a + b + c + d
+        edges.push(Edge::new(14, 15)); // b + c + d to a + b + c + d
 
         Shape4 {
             vertices,

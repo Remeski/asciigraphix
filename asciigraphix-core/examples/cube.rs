@@ -1,7 +1,4 @@
-use asciigraphix_core::{
-    Display,
-    shapes::{Face, Point, Shape},
-};
+use asciigraphix_core::{Display, math::Point, shapes::Shape};
 
 fn main() {
     const DISPLAY_X: usize = 100;
@@ -13,13 +10,13 @@ fn main() {
         Point(0.0, 0.0, -1.0),
         3.14 / 2.0,
     );
-    let mut cube = Shape::generate_cube_filled(Point(0.0, 0.0, 0.0), 5.0);
-    // cube.faces = vec![Face(0, 1, 2), Face(0, 2, 3), Face()];
+    let mut cube = Shape::generate_cube_colorful(Point(0.0, 0.0, 0.0), 5.0);
+
     Display::clear_screen();
     loop {
         cube.rotate(
             &cube.center.clone().unwrap_or(Point(0.0, 0.0, 0.0)),
-            (0.05, 0.05, 0.0),
+            (0.05, 0.00, 0.0),
         );
 
         display.render_terminal(&cube);

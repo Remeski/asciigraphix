@@ -145,13 +145,14 @@ mod tests {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[allow(dead_code)]
 pub enum TextColor {
     Red,
     Cyan,
     BrightCyan,
     BrightGreen,
+    Rgb(u8, u8, u8)
 }
 
 enum ViewportPoint {
@@ -213,13 +214,13 @@ impl Display {
         ViewportPoint::Inside(x_pixel, y_pixel, z)
     }
 
-    fn project_point(&mut self, point: &Point) {
+    fn project_point(&mut self, point: &Point, color: Option<TextColor>) {
         if let ViewportPoint::Inside(x, y, z) = self.world_to_viewport(point) {
-            self.set_viewport_point(x, y, z);
+            self.set_viewport_point(x, y, z, color);
         }
     }
 
-    fn set_viewport_point(&mut self, x: usize, y: usize, z: f64) {
+    fn set_viewport_point(&mut self, x: usize, y: usize, z: f64, color: Option<TextColor>) {
         let cur_depth = self.z_buffer.xy(x, y);
         match cur_depth {
             Some(k) if z > k => self.z_buffer.set_xy(x, y, Some(z)),
@@ -230,7 +231,7 @@ impl Display {
         }
 
         let cell = self.frame_buffer.xy_mut(x, y);
-        let color = TextColor::Red;
+        let color = color.unwrap_or(TextColor::Red);
         if z < 10.0 {
             cell.char = '#';
             cell.color = color;
@@ -248,7 +249,7 @@ impl Display {
 
     fn project_vertices(&mut self, vertices: &Vec<Point>) {
         for vertex in vertices {
-            self.project_point(vertex);
+            self.project_point(vertex, None);
         }
     }
 
@@ -263,7 +264,7 @@ impl Display {
             const VERTEX_DENSITY: usize = 100;
             for c in 0..VERTEX_DENSITY {
                 let point = start.clone() + delta.clone() * (c as f64 / VERTEX_DENSITY as f64);
-                self.project_point(&point);
+                self.project_point(&point, edge.2.clone().map(|t| t.into()));
             }
         }
     }
@@ -276,6 +277,7 @@ impl Display {
         (x1, y1, z1): (f64, f64, f64),
         (x2, y2, z2): (f64, f64, f64),
         (x_new, y_new, z_new): (f64, f64, f64),
+        color: Option<TextColor>,
     ) {
         let invslope1 = (x2 - x1) / (y2 - y1);
         let invslope2 = (x_new - x1) / (y_new - y1);
@@ -291,7 +293,7 @@ impl Display {
             for i in 0..100 {
                 let x = x_start + dx * 0.01 * i as f64;
                 let x = x.round() as usize;
-                self.set_viewport_point(x, y, 1.0);
+                self.set_viewport_point(x, y, z_new, color);
             }
 
             // for x in (x_start.round() as usize)..(x_end.round() as usize) {
@@ -308,6 +310,7 @@ impl Display {
         (x1, y1, z1): (f64, f64, f64),
         (x2, y2, z2): (f64, f64, f64),
         (x_new, y_new, z_new): (f64, f64, f64),
+        color: Option<TextColor>,
     ) {
         let invslope1 = (x1 - x2) / (y1 - y2);
         let invslope2 = (x1 - x_new) / (y1 - y_new);
@@ -323,7 +326,7 @@ impl Display {
             for i in 0..100 {
                 let x = x_start + dx * 0.01 * i as f64;
                 let x = x.round() as usize;
-                self.set_viewport_point(x, y, 1.0);
+                self.set_viewport_point(x, y, z_new, color);
             }
 
             // let dx = x_start - x_end;
@@ -340,28 +343,28 @@ impl Display {
         (x1, y1, z1): (usize, usize, f64),
         (x2, y2, z2): (usize, usize, f64),
         (x3, y3, z3): (usize, usize, f64),
+        color: Option<TextColor>,
     ) {
         let (x1, y1, z1) = (x1 as f64, y1 as f64, z1 as f64);
         let (x2, y2, z2) = (x2 as f64, y2 as f64, z2 as f64);
         let (x3, y3, z3) = (x3 as f64, y3 as f64, z3 as f64);
 
         if y2 == y3 {
-            self.project_toptriangle((x1, y1, z1), (x2, y2, z2), (x3, y3, z3));
+            self.project_toptriangle((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), color);
             return;
         }
 
         if y1 == y2 {
-            self.project_bottomtriangle((x3, y3, z3), (x1, y1, z1), (x2, y2, z2));
+            self.project_bottomtriangle((x3, y3, z3), (x1, y1, z1), (x2, y2, z2), color);
             return;
         }
 
         let x_new = (x3 - x1) / (y3 - y1) * (y2 - y1) + x1;
-
         let y_new = y2;
         let z_new = z2;
 
-        self.project_toptriangle((x1, y1, z1), (x2, y2, z2), (x_new, y_new, z_new));
-        self.project_bottomtriangle((x3, y3, z3), (x2, y2, z2), (x_new, y_new, z_new));
+        self.project_toptriangle((x1, y1, z1), (x2, y2, z2), (x_new, y_new, z_new), color);
+        self.project_bottomtriangle((x3, y3, z3), (x2, y2, z2), (x_new, y_new, z_new), color);
     }
 
     fn project_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
@@ -391,7 +394,7 @@ impl Display {
                     if y3 == y1 {
                         return;
                     }
-                    self.project_triangle((x1, y1, z1), (x2, y2, z2), (x3, y3, z3));
+                    self.project_triangle((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), face.3.clone().map(|t| t.into()));
                 }
                 _ => {}
             }
@@ -421,12 +424,7 @@ impl Display {
     }
 
     fn colored(text: &str, color: TextColor) {
-        match color {
-            TextColor::Red => print!("\x1b[31m{}\x1b[0m", text),
-            TextColor::Cyan => print!("\x1b[36m{}\x1b[0m", text),
-            TextColor::BrightCyan => print!("\x1b[96m{}\x1b[0m", text),
-            TextColor::BrightGreen => print!("\x1b[92m{}\x1b[0m", text),
-        }
+        print!("{}", Self::colored_string(text, color))
     }
 
     fn colored_string(text: &str, color: TextColor) -> String {
@@ -435,6 +433,7 @@ impl Display {
             TextColor::Cyan => format!("\x1b[36m{}\x1b[0m", text),
             TextColor::BrightCyan => format!("\x1b[96m{}\x1b[0m", text),
             TextColor::BrightGreen => format!("\x1b[92m{}\x1b[0m", text),
+            TextColor::Rgb(r, g, b) => format!("\x1b[38;2;{r};{g};{b}m{}\x1b[0m", text)
         }
     }
 
@@ -489,19 +488,8 @@ impl Display {
         self.frame_buffer.clear();
         self.z_buffer.clear();
         self.project(&shape);
-        for Cell {
-            x,
-            y,
-            char,
-            color,
-        } in self.frame_buffer.iter()
-        {
-            match (*x, char) {
-                // (0, _) => Self::colored("|", *color),
-                (_, char) => {
-                    Self::set_terminal_char(*x, *y, Self::colored_string(&char.to_string(), *color));
-                }
-            }
+        for Cell { x, y, char, color } in self.frame_buffer.iter() {
+            Self::set_terminal_char(*x, *y, Self::colored_string(&char.to_string(), *color));
         }
     }
 }

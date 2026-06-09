@@ -20,7 +20,7 @@ fn main() {
             Point(0.0, 1.0, 0.0),
         ],
         vec![],
-        vec![Face(2,3,0), Face(0,1,2)],
+        vec![Face::new(2,3,0), Face::new(0,1,2)],
     );
     // let mut cube = Shape::generate_cube(Point(0.0, 0.0, 0.0), 1.0);
     // cube.faces = vec![Face(0, 1, 2)];
