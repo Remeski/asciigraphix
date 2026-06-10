@@ -454,7 +454,7 @@ impl Display {
         print!("\x1B[?25l");
     }
 
-    fn set_terminal_char(x: usize, y: usize, char: String) {
+    fn set_terminal_char(x: usize, y: usize, char: &str) {
         // move cursor
         print!("\x1B[{};{}H", y, x);
         print!("\x1B[{};{}f", y, x);
@@ -529,7 +529,7 @@ impl Display {
         self.z_buffer.clear();
         self.project(&shape);
         for Cell { x, y, char, color } in self.frame_buffer.iter() {
-            Self::set_terminal_char(*x, *y, Self::colored_string(&char.to_string(), *color));
+            Self::set_terminal_char(*x, *y, &Self::colored_string(&char.to_string(), *color));
         }
     }
 }
