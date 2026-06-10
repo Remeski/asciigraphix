@@ -152,7 +152,7 @@ pub enum TextColor {
     Cyan,
     BrightCyan,
     BrightGreen,
-    Rgb(u8, u8, u8)
+    Rgb(u8, u8, u8),
 }
 
 enum ViewportPoint {
@@ -176,7 +176,7 @@ impl Display {
             frame_buffer: FrameBuffer::new(width, height),
             cam_pos,
             cam_unit_vectors: Self::orthogonal_basis(cam_direction),
-            cam_focal: height as f64 / 2.0 * 1.0 * (cam_fov / 2.0).tan(),
+            cam_focal: height as f64 / 2.0 * (cam_fov / 2.0).tan(),
         }
     }
 
@@ -204,7 +204,7 @@ impl Display {
         let x = x + (self.width as f64 / 2.0);
         let y = y + (self.height as f64 / 2.0);
 
-        if (x < 0.0) || (y < 0.0) || (x >= self.width as f64) || (y >= self.height as f64) {
+        if (x < 0.0) || (y < 0.0) || (x >= self.width as f64 - 1.0) || (y >= self.height as f64 - 1.0) {
             return ViewportPoint::Outside(x, y, z);
         }
 
@@ -223,7 +223,7 @@ impl Display {
     fn set_viewport_point(&mut self, x: usize, y: usize, z: f64, color: Option<TextColor>) {
         let cur_depth = self.z_buffer.xy(x, y);
         match cur_depth {
-            Some(k) if z > k => self.z_buffer.set_xy(x, y, Some(z)),
+            Some(k) if z < k => self.z_buffer.set_xy(x, y, Some(z)),
             None => self.z_buffer.set_xy(x, y, Some(z)),
             _ => {
                 return;
@@ -232,6 +232,7 @@ impl Display {
 
         let cell = self.frame_buffer.xy_mut(x, y);
         let color = color.unwrap_or(TextColor::Red);
+        // let color = TextColor::Rgb(((1.0 - z.clamp(0.0, 20.0) / 20.0) * 249.0).round() as u8, 0, 0);
         if z < 10.0 {
             cell.char = '#';
             cell.color = color;
@@ -245,6 +246,7 @@ impl Display {
             cell.char = '.';
             cell.color = color;
         }
+        cell.char = (b'0' + z.round().abs() as u8) as char
     }
 
     fn project_vertices(&mut self, vertices: &Vec<Point>) {
@@ -285,16 +287,22 @@ impl Display {
         let mut x_start = x1;
         let mut x_end = x1;
 
-        for y in (y1 as usize)..(y_new as usize) {
-            x_start += invslope1;
-            x_end += invslope2;
-
+        for y in (y1 as usize)..(y_new as usize + 1) {
             let dx = x_end - x_start;
-            for i in 0..100 {
+            for i in 0..101 {
                 let x = x_start + dx * 0.01 * i as f64;
+                let bary = Point(x, y as f64, 0.0).to_barycentric(
+                    Point(x1, y1, 0.0),
+                    Point(x2, y2, 0.0),
+                    Point(x_new, y_new, 0.0),
+                );
+                let z_new = bary.0 * z1 + bary.1 * z2 + bary.2 * z_new;
                 let x = x.round() as usize;
                 self.set_viewport_point(x, y, z_new, color);
             }
+
+            x_start += invslope1;
+            x_end += invslope2;
 
             // for x in (x_start.round() as usize)..(x_end.round() as usize) {
             //     self.set_viewport_point(x, y, 1.0);
@@ -319,15 +327,22 @@ impl Display {
         let mut x_end = x_new;
 
         for y in (y_new as usize)..(y1 as usize) {
-            x_start += invslope1;
-            x_end += invslope2;
-
             let dx = x_end - x_start;
-            for i in 0..100 {
+            for i in 0..101 {
                 let x = x_start + dx * 0.01 * i as f64;
+                let bary = Point(x, y as f64, 0.0).to_barycentric(
+                    Point(x1, y1, 0.0),
+                    Point(x2, y2, 0.0),
+                    Point(x_new, y_new, 0.0),
+                );
+                let z_new = bary.0 * z1 + bary.1 * z2 + bary.2 * z_new;
                 let x = x.round() as usize;
+                // TODO: Interpolate z_new
                 self.set_viewport_point(x, y, z_new, color);
             }
+
+            x_start += invslope1;
+            x_end += invslope2;
 
             // let dx = x_start - x_end;
             // for x in (x_start.round() as usize)..(x_end.round() as usize) {
@@ -359,9 +374,15 @@ impl Display {
             return;
         }
 
+        // TODO: FIX interpolate between z1, z2, z3 to get z_new.
         let x_new = (x3 - x1) / (y3 - y1) * (y2 - y1) + x1;
         let y_new = y2;
-        let z_new = z2;
+        let bary = Point(x_new, y_new, 0.0).to_barycentric(
+            Point(x1, y1, 0.0),
+            Point(x2, y2, 0.0),
+            Point(x3, y3, 0.0),
+        );
+        let z_new = bary.0 * z1 + bary.1 * z2 + bary.2 * z3;
 
         self.project_toptriangle((x1, y1, z1), (x2, y2, z2), (x_new, y_new, z_new), color);
         self.project_bottomtriangle((x3, y3, z3), (x2, y2, z2), (x_new, y_new, z_new), color);
@@ -369,11 +390,25 @@ impl Display {
 
     fn project_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
         for face in faces {
-            let vertex1 = self.world_to_viewport(vertices.get(face.0).unwrap());
-            let vertex2 = self.world_to_viewport(vertices.get(face.1).unwrap());
-            let vertex3 = self.world_to_viewport(vertices.get(face.2).unwrap());
+            let vertex1 = vertices.get(face.0).unwrap();
+            let vertex2 = vertices.get(face.1).unwrap();
+            let vertex3 = vertices.get(face.2).unwrap();
 
-            match (vertex1, vertex2, vertex3) {
+            // let v21 = *vertex2 - *vertex1;
+            // let v31 = *vertex3 - *vertex1;
+            // let cross = v31.cross(&v21);
+            // let area_squared = cross.dot(&cross);
+            // dbg!(area_squared);
+            //
+            // if area_squared <  {
+            //     return;
+            // }
+
+
+            let viewport1 = self.world_to_viewport(vertex1);
+            let viewport2 = self.world_to_viewport(vertex2);
+            let viewport3 = self.world_to_viewport(vertex3);
+            match (viewport1, viewport2, viewport3) {
                 (
                     ViewportPoint::Inside(mut x1, mut y1, z1),
                     ViewportPoint::Inside(mut x2, mut y2, z2),
@@ -394,7 +429,12 @@ impl Display {
                     if y3 == y1 {
                         return;
                     }
-                    self.project_triangle((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), face.3.clone().map(|t| t.into()));
+                    self.project_triangle(
+                        (x1, y1, z1),
+                        (x2, y2, z2),
+                        (x3, y3, z3),
+                        face.3.clone().map(|t| t.into()),
+                    );
                 }
                 _ => {}
             }
@@ -433,7 +473,7 @@ impl Display {
             TextColor::Cyan => format!("\x1b[36m{}\x1b[0m", text),
             TextColor::BrightCyan => format!("\x1b[96m{}\x1b[0m", text),
             TextColor::BrightGreen => format!("\x1b[92m{}\x1b[0m", text),
-            TextColor::Rgb(r, g, b) => format!("\x1b[38;2;{r};{g};{b}m{}\x1b[0m", text)
+            TextColor::Rgb(r, g, b) => format!("\x1b[38;2;{r};{g};{b}m{}\x1b[0m", text),
         }
     }
 
