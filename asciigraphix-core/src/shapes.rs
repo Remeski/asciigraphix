@@ -1,4 +1,7 @@
-use crate::{TextColor, math::{Point, Point4}};
+use crate::{
+    TextColor,
+    math::{Point, Point4},
+};
 
 const VERTEX_DENSITY: usize = 100;
 
@@ -19,8 +22,10 @@ impl Edge {
     pub fn new(index1: usize, index2: usize) -> Self {
         Self(index1, index2, None)
     }
+    pub fn offset(&self, offset: usize) -> Self {
+        Self(self.0 + offset, self.1 + offset, self.2.clone())
+    }
 }
-
 
 // This holds the indexes of points forming a face.
 #[derive(Debug, Clone)]
@@ -29,6 +34,14 @@ pub struct Face(pub usize, pub usize, pub usize, pub Option<Rgb>);
 impl Face {
     pub fn new(index1: usize, index2: usize, index3: usize) -> Self {
         Self(index1, index2, index3, None)
+    }
+    pub fn offset(&self, offset: usize) -> Self {
+        Self(
+            self.0 + offset,
+            self.1 + offset,
+            self.2 + offset,
+            self.3.clone(),
+        )
     }
 }
 
@@ -86,8 +99,8 @@ impl Shape {
         let mut edges = self.edges.clone();
         let mut faces = self.faces.clone();
         vertices.append(&mut s2.vertices.clone());
-        edges.append(&mut s2.edges.clone());
-        faces.append(&mut s2.faces.clone());
+        edges.append(&mut s2.edges.iter().map(|edge| edge.offset(self.vertices.len())).collect());
+        faces.append(&mut s2.faces.iter().map(|face| face.offset(self.vertices.len())).collect());
         Shape {
             vertices,
             edges,
@@ -127,19 +140,35 @@ impl Shape {
         let edges = &mut shape.edges;
         let faces = &mut shape.faces;
 
-        edges[0].2 = Some(Rgb(0, 125, 100));
-        edges[1].2 = Some(Rgb(0, 125, 100));
-        edges[2].2 = Some(Rgb(0, 125, 100));
-        edges[3].2 = Some(Rgb(0, 125, 100));
-        faces[0].3 = Some(Rgb(0, 125, 100));
-        faces[1].3 = Some(Rgb(0, 125, 100));
+        edges[0].2 = Some(Rgb(0, 0, 100));
+        edges[1].2 = Some(Rgb(0, 0, 100));
+        edges[2].2 = Some(Rgb(0, 0, 100));
+        edges[3].2 = Some(Rgb(0, 0, 100));
+        faces[0].3 = Some(Rgb(0, 0, 100));
+        faces[1].3 = Some(Rgb(0, 0, 100));
 
-        edges[4].2 = Some(Rgb(0, 0, 100));
-        edges[5].2 = Some(Rgb(0, 0, 100));
-        edges[6].2 = Some(Rgb(0, 0, 100));
-        edges[7].2 = Some(Rgb(0, 0, 100));
-        faces[2].3 = Some(Rgb(0, 0, 100));
-        faces[3].3 = Some(Rgb(0, 0, 100));
+        edges[4].2 = Some(Rgb(0, 100, 0));
+        edges[5].2 = Some(Rgb(0, 100, 0));
+        edges[6].2 = Some(Rgb(0, 100, 0));
+        edges[7].2 = Some(Rgb(0, 100, 0));
+        faces[2].3 = Some(Rgb(0, 100, 0));
+        faces[3].3 = Some(Rgb(0, 100, 0));
+
+        // edges[8].2 = Some(Rgb(100, 0, 100));
+        // edges[9].2 = Some(Rgb(100, 0, 100));
+        // edges[10].2 = Some(Rgb(100, 0, 100));
+        // edges[20].2 = Some(Rgb(100, 0, 100));
+        faces[4].3 = Some(Rgb(100, 0, 0));
+        faces[5].3 = Some(Rgb(100, 0, 0));
+
+        faces[6].3 = Some(Rgb(100, 0, 100));
+        faces[7].3 = Some(Rgb(100, 0, 100));
+
+        faces[8].3 = Some(Rgb(100, 100, 0));
+        faces[9].3 = Some(Rgb(100, 100, 0));
+
+        faces[10].3 = Some(Rgb(0, 100, 100));
+        faces[11].3 = Some(Rgb(0, 100, 100));
 
         shape
     }
