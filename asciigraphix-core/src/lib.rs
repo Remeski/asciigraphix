@@ -156,7 +156,7 @@ pub enum TextColor {
 }
 
 enum ViewportPoint {
-    Inside(usize, usize, f64),
+    Inside(f64, f64, f64),
     Outside(f64, f64, f64),
     Behind,
 }
@@ -204,14 +204,15 @@ impl Display {
         let x = x + (self.width as f64 / 2.0);
         let y = y + (self.height as f64 / 2.0);
 
-        if (x < 0.0) || (y < 0.0) || (x >= self.width as f64 - 1.0) || (y >= self.height as f64 - 1.0) {
+        if (x < 0.0)
+            || (y < 0.0)
+            || (x > self.width as f64 - 1.0)
+            || (y > self.height as f64 - 1.0)
+        {
             return ViewportPoint::Outside(x, y, z);
         }
 
-        let x_pixel = x.round() as usize;
-        let y_pixel = y.round() as usize;
-
-        ViewportPoint::Inside(x_pixel, y_pixel, z)
+        ViewportPoint::Inside(x, y, z)
     }
 
     fn project_point(&mut self, point: &Point, color: Option<TextColor>) {
@@ -220,10 +221,20 @@ impl Display {
         }
     }
 
-    fn set_viewport_point(&mut self, x: usize, y: usize, z: f64, color: Option<TextColor>) {
+    fn set_viewport_point(&mut self, x: f64, y: f64, z: f64, color: Option<TextColor>) {
+        let x = x.floor() as isize;
+        let y = y.floor() as isize;
+
+        if x < 0 || y < 0 || x as usize >= self.width || y as usize >= self.height {
+            return
+        }
+
+        let x = x as usize;
+        let y = y as usize;
+
         let cur_depth = self.z_buffer.xy(x, y);
         match cur_depth {
-            Some(k) if z < k => self.z_buffer.set_xy(x, y, Some(z)),
+            Some(k) if z < k => self.z_buffer.set_xy(x as usize, y as usize, Some(z)),
             None => self.z_buffer.set_xy(x, y, Some(z)),
             _ => {
                 return;
@@ -246,16 +257,17 @@ impl Display {
             cell.char = '.';
             cell.color = color;
         }
-        cell.char = (b'0' + z.round().abs() as u8) as char
+        // cell.char = (b'0' + (1.0 / z).round().abs() as u8) as char
+        // cell.char = (b'0' + (y - 18) as u8) as char;
     }
 
-    fn project_vertices(&mut self, vertices: &Vec<Point>) {
+    fn draw_vertices(&mut self, vertices: &Vec<Point>) {
         for vertex in vertices {
             self.project_point(vertex, None);
         }
     }
 
-    fn project_edges(&mut self, vertices: &Vec<Point>, edges: &Vec<Edge>) {
+    fn draw_edges(&mut self, vertices: &Vec<Point>, edges: &Vec<Edge>) {
         for edge in edges {
             let start = vertices[edge.0].clone();
             let end = vertices[edge.1].clone();
@@ -271,42 +283,52 @@ impl Display {
         }
     }
 
+    fn draw_scanline(
+        &mut self,
+        mut x_start: f64,
+        mut x_end: f64,
+        y: f64,
+        Point(x1, y1, z1): Point,
+        Point(x2, y2, z2): Point,
+        Point(x_new, y_new, z_new): Point,
+        color: Option<TextColor>,
+    ) {
+        if x_start > x_end {
+            std::mem::swap(&mut x_start, &mut x_end);
+        }
+
+        for x in x_start.floor() as isize..x_end.ceil() as isize {
+            let bary = Point(x as f64, y as f64, 0.0).to_barycentric(
+                Point(x1, y1, 0.0),
+                Point(x2, y2, 0.0),
+                Point(x_new, y_new, 0.0),
+            );
+
+            if bary.0 * bary.1 >= 0.0 && bary.0 * bary.2 >= 0.0 && bary.1 * bary.2 >= 0.0 {
+                let z_new = bary.0 * 1.0 / z1 + bary.1 * 1.0 / z2 + bary.2 * 1.0 / z_new;
+                self.set_viewport_point(x as f64, y as f64, 1.0 / z_new, color);
+            }
+        }
+    }
+
     /// y_new and y2 must be the same (i.e. the line between (x2,y2) and (x_new, y_new) is
     /// horizontal).
     /// also y1 < y2 (i.e. on the screen (x1, y1) will be on top).
-    fn project_toptriangle(
-        &mut self,
-        (x1, y1, z1): (f64, f64, f64),
-        (x2, y2, z2): (f64, f64, f64),
-        (x_new, y_new, z_new): (f64, f64, f64),
-        color: Option<TextColor>,
-    ) {
+    fn draw_toptriangle(&mut self, v1: Point, v2: Point, v_new: Point, color: Option<TextColor>) {
+        let Point(x1, y1, _) = v1;
+        let Point(x2, y2, _) = v2;
+        let Point(x_new, y_new, _) = v_new;
+
         let invslope1 = (x2 - x1) / (y2 - y1);
         let invslope2 = (x_new - x1) / (y_new - y1);
 
         let mut x_start = x1;
         let mut x_end = x1;
 
-        for y in (y1 as usize)..(y_new as usize + 1) {
-            let dx = x_end - x_start;
-            for i in 0..101 {
-                let x = x_start + dx * 0.01 * i as f64;
-                let bary = Point(x, y as f64, 0.0).to_barycentric(
-                    Point(x1, y1, 0.0),
-                    Point(x2, y2, 0.0),
-                    Point(x_new, y_new, 0.0),
-                );
-                let z_new = bary.0 * z1 + bary.1 * z2 + bary.2 * z_new;
-                let x = x.round() as usize;
-                self.set_viewport_point(x, y, z_new, color);
-            }
-
+        for y in (y1.floor() as isize)..(y_new.ceil() as isize) {
+            self.draw_scanline(x_start, x_end, y as f64, v1, v2, v_new, color);
             x_start += invslope1;
             x_end += invslope2;
-
-            // for x in (x_start.round() as usize)..(x_end.round() as usize) {
-            //     self.set_viewport_point(x, y, 1.0);
-            // }
         }
     }
 
@@ -315,66 +337,54 @@ impl Display {
     /// also y1 > y2 (i.e. on the screen (x1, y1) will be on bottom).
     fn project_bottomtriangle(
         &mut self,
-        (x1, y1, z1): (f64, f64, f64),
-        (x2, y2, z2): (f64, f64, f64),
-        (x_new, y_new, z_new): (f64, f64, f64),
+        v1: Point,
+        v2: Point,
+        v_new: Point,
         color: Option<TextColor>,
     ) {
+        let Point(x1, y1, _) = v1;
+        let Point(x2, y2, _) = v2;
+        let Point(x_new, y_new, _) = v_new;
+
         let invslope1 = (x1 - x2) / (y1 - y2);
         let invslope2 = (x1 - x_new) / (y1 - y_new);
 
         let mut x_start = x2;
         let mut x_end = x_new;
 
-        for y in (y_new as usize)..(y1 as usize) {
-            let dx = x_end - x_start;
-            for i in 0..101 {
-                let x = x_start + dx * 0.01 * i as f64;
-                let bary = Point(x, y as f64, 0.0).to_barycentric(
-                    Point(x1, y1, 0.0),
-                    Point(x2, y2, 0.0),
-                    Point(x_new, y_new, 0.0),
-                );
-                let z_new = bary.0 * z1 + bary.1 * z2 + bary.2 * z_new;
-                let x = x.round() as usize;
-                // TODO: Interpolate z_new
-                self.set_viewport_point(x, y, z_new, color);
-            }
-
+        for y in (y_new.floor() as isize)..(y1.ceil() as isize) {
+            // dbg!(x_start, x_end);
+            self.draw_scanline(x_start, x_end, y as f64, v1, v2, v_new, color);
             x_start += invslope1;
             x_end += invslope2;
-
-            // let dx = x_start - x_end;
-            // for x in (x_start.round() as usize)..(x_end.round() as usize) {
-            //     self.set_viewport_point(x, y, 1.0);
-            // }
         }
     }
 
     /// Expects sorted along y-axis (first highest on the screen which means the actual value of y1
     /// is smallest).
-    fn project_triangle(
-        &mut self,
-        (x1, y1, z1): (usize, usize, f64),
-        (x2, y2, z2): (usize, usize, f64),
-        (x3, y3, z3): (usize, usize, f64),
-        color: Option<TextColor>,
-    ) {
-        let (x1, y1, z1) = (x1 as f64, y1 as f64, z1 as f64);
-        let (x2, y2, z2) = (x2 as f64, y2 as f64, z2 as f64);
-        let (x3, y3, z3) = (x3 as f64, y3 as f64, z3 as f64);
+    fn project_triangle(&mut self, v1: Point, v2: Point, v3: Point, color: Option<TextColor>) {
+        let y1y2_close = (v1.1 - v2.1).abs() < 2.0;
+        let y2y3_close = (v2.1 - v3.1).abs() < 2.0;
+        let y1y3_close = (v1.1 - v3.1).abs() < 2.0;
 
-        if y2 == y3 {
-            self.project_toptriangle((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), color);
+        if y1y2_close && y2y3_close && y1y3_close {
+            return
+        }
+
+        if y2y3_close {
+            self.draw_toptriangle(v1, v2, v3, color);
             return;
         }
 
-        if y1 == y2 {
-            self.project_bottomtriangle((x3, y3, z3), (x1, y1, z1), (x2, y2, z2), color);
+        if y1y2_close {
+            self.project_bottomtriangle(v3, v1, v2, color);
             return;
         }
 
-        // TODO: FIX interpolate between z1, z2, z3 to get z_new.
+        let Point(x1, y1, z1) = v1;
+        let Point(x2, y2, z2) = v2;
+        let Point(x3, y3, z3) = v3;
+
         let x_new = (x3 - x1) / (y3 - y1) * (y2 - y1) + x1;
         let y_new = y2;
         let bary = Point(x_new, y_new, 0.0).to_barycentric(
@@ -382,13 +392,15 @@ impl Display {
             Point(x2, y2, 0.0),
             Point(x3, y3, 0.0),
         );
-        let z_new = bary.0 * z1 + bary.1 * z2 + bary.2 * z3;
+        let z_new = 1.0 / (bary.0 * 1.0 / z1 + bary.1 * 1.0 / z2 + bary.2 * 1.0 / z3);
 
-        self.project_toptriangle((x1, y1, z1), (x2, y2, z2), (x_new, y_new, z_new), color);
-        self.project_bottomtriangle((x3, y3, z3), (x2, y2, z2), (x_new, y_new, z_new), color);
+        // dbg!(y1, y2, y_new);
+
+        self.draw_toptriangle(v1, v2, Point(x_new, y_new, z_new), color);
+        self.project_bottomtriangle(v3, v2, Point(x_new, y_new, z_new), color);
     }
 
-    fn project_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
+    fn draw_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
         for face in faces {
             let vertex1 = vertices.get(face.0).unwrap();
             let vertex2 = vertices.get(face.1).unwrap();
@@ -404,35 +416,36 @@ impl Display {
             //     return;
             // }
 
-
             let viewport1 = self.world_to_viewport(vertex1);
             let viewport2 = self.world_to_viewport(vertex2);
             let viewport3 = self.world_to_viewport(vertex3);
             match (viewport1, viewport2, viewport3) {
                 (
-                    ViewportPoint::Inside(mut x1, mut y1, z1),
-                    ViewportPoint::Inside(mut x2, mut y2, z2),
-                    ViewportPoint::Inside(mut x3, mut y3, z3),
+                    ViewportPoint::Inside(mut x1, mut y1, mut z1),
+                    ViewportPoint::Inside(mut x2, mut y2, mut z2),
+                    ViewportPoint::Inside(mut x3, mut y3, mut z3),
                 ) => {
+                    // dbg!("inside");
                     if y1 > y2 {
                         std::mem::swap(&mut x2, &mut x1);
                         std::mem::swap(&mut y2, &mut y1);
+                        std::mem::swap(&mut z2, &mut z1);
                     }
                     if y1 > y3 {
                         std::mem::swap(&mut x3, &mut x1);
                         std::mem::swap(&mut y3, &mut y1);
+                        std::mem::swap(&mut z3, &mut z1);
                     }
                     if y2 > y3 {
                         std::mem::swap(&mut x2, &mut x3);
                         std::mem::swap(&mut y2, &mut y3);
+                        std::mem::swap(&mut z2, &mut z3);
                     }
-                    if y3 == y1 {
-                        return;
-                    }
+                    // dbg!(y1, y2, y3);
                     self.project_triangle(
-                        (x1, y1, z1),
-                        (x2, y2, z2),
-                        (x3, y3, z3),
+                        Point(x1, y1, z1),
+                        Point(x2, y2, z2),
+                        Point(x3, y3, z3),
                         face.3.clone().map(|t| t.into()),
                     );
                 }
@@ -442,9 +455,9 @@ impl Display {
     }
 
     fn project(&mut self, shape: &shapes::Shape) {
-        self.project_faces(&shape.vertices, &shape.faces);
-        self.project_edges(&shape.vertices, &shape.edges);
-        self.project_vertices(&shape.vertices);
+        self.draw_faces(&shape.vertices, &shape.faces);
+        // self.draw_edges(&shape.vertices, &shape.edges);
+        // self.draw_vertices(&shape.vertices);
     }
 
     pub fn clear_screen() {
