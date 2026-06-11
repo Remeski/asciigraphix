@@ -141,33 +141,29 @@ impl Shape {
         let faces = &mut shape.faces;
 
         edges[0].2 = Some(Rgb(0, 0, 100));
-        edges[1].2 = Some(Rgb(0, 0, 100));
+        edges[1].2 = Some(Rgb(0, 50, 100));
         edges[2].2 = Some(Rgb(0, 0, 100));
-        edges[3].2 = Some(Rgb(0, 0, 100));
+        edges[3].2 = Some(Rgb(0, 50, 100));
         faces[0].3 = Some(Rgb(0, 0, 100));
-        faces[1].3 = Some(Rgb(0, 0, 100));
+        faces[1].3 = Some(Rgb(0, 50, 100));
 
-        edges[4].2 = Some(Rgb(0, 100, 0));
+        edges[4].2 = Some(Rgb(70, 100, 0));
         edges[5].2 = Some(Rgb(0, 100, 0));
-        edges[6].2 = Some(Rgb(0, 100, 0));
+        edges[6].2 = Some(Rgb(70, 100, 0));
         edges[7].2 = Some(Rgb(0, 100, 0));
-        faces[2].3 = Some(Rgb(0, 100, 0));
+        faces[2].3 = Some(Rgb(70, 100, 0));
         faces[3].3 = Some(Rgb(0, 100, 0));
 
-        // edges[8].2 = Some(Rgb(100, 0, 100));
-        // edges[9].2 = Some(Rgb(100, 0, 100));
-        // edges[10].2 = Some(Rgb(100, 0, 100));
-        // edges[20].2 = Some(Rgb(100, 0, 100));
-        faces[4].3 = Some(Rgb(100, 0, 0));
+        faces[4].3 = Some(Rgb(100, 0, 50));
         faces[5].3 = Some(Rgb(100, 0, 0));
 
-        faces[6].3 = Some(Rgb(100, 0, 100));
+        faces[6].3 = Some(Rgb(100, 50, 100));
         faces[7].3 = Some(Rgb(100, 0, 100));
 
-        faces[8].3 = Some(Rgb(100, 100, 0));
+        faces[8].3 = Some(Rgb(100, 100, 50));
         faces[9].3 = Some(Rgb(100, 100, 0));
 
-        faces[10].3 = Some(Rgb(0, 100, 100));
+        faces[10].3 = Some(Rgb(50, 100, 100));
         faces[11].3 = Some(Rgb(0, 100, 100));
 
         shape
