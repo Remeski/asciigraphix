@@ -115,33 +115,12 @@ impl ZBuffer {
     }
 }
 
-pub struct Display {
-    width: usize,
-    height: usize,
-    z_buffer: ZBuffer,
-    frame_buffer: FrameBuffer,
-    pub cam_pos: Point,
-    cam_unit_vectors: (Point, Point, Point),
-    cam_focal: f64,
-}
-
 // 8-bit color
 pub struct RGB(u8, u8, u8);
 
 impl RGB {
     pub fn to_u32(&self) -> u32 {
         (self.0 as u32) << 16 | (self.1 as u32) << 8 | self.2 as u32
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::RGB;
-
-    #[test]
-    fn rgb() {
-        let color = RGB(255, 5, 15);
-        assert_eq!(color.to_u32(), 0x00FF050F);
     }
 }
 
@@ -161,12 +140,24 @@ enum ViewportPoint {
     Behind,
 }
 
+
+pub struct Display {
+    width: usize,
+    height: usize,
+    z_buffer: ZBuffer,
+    frame_buffer: FrameBuffer,
+    pub cam_pos: Point,
+    cam_unit_vectors: (Point, Point, Point),
+    cam_focal: f64,
+}
+
 impl Display {
     pub fn new(
         width: usize,
         height: usize,
         cam_pos: Point,
         cam_direction: Point,
+        cam_vup: Point,
         cam_fov: f64,
     ) -> Display {
         Display {
@@ -175,14 +166,13 @@ impl Display {
             z_buffer: ZBuffer::new(width, height),
             frame_buffer: FrameBuffer::new(width, height),
             cam_pos,
-            cam_unit_vectors: Self::orthogonal_basis(cam_direction),
+            cam_unit_vectors: Self::cam_basis(cam_direction, cam_vup),
             cam_focal: height as f64 / 2.0 * (cam_fov / 2.0).tan(),
         }
     }
 
-    fn orthogonal_basis(cam_direction: Point) -> (Point, Point, Point) {
-        // Pick a vector from xz-plane i.e. (x, 0, z) that is orthogonal to cam_direction
-        let a = Point(-cam_direction.2, 0.0, cam_direction.0).unit();
+    fn cam_basis(cam_direction: Point, cam_vup: Point) -> (Point, Point, Point) {
+        let a = cam_direction.cross(&cam_vup).unit();
         let b = cam_direction.cross(&a).unit();
         (cam_direction.unit(), a, b)
     }
@@ -215,13 +205,7 @@ impl Display {
         ViewportPoint::Inside(x, y, z)
     }
 
-    fn project_point(&mut self, point: &Point, color: Option<TextColor>) {
-        if let ViewportPoint::Inside(x, y, z) = self.world_to_viewport(point) {
-            self.set_viewport_point(x, y, z, color);
-        }
-    }
-
-    fn set_viewport_point(&mut self, x: f64, y: f64, z: f64, color: Option<TextColor>) {
+    fn set_screen_point(&mut self, x: f64, y: f64, z: f64, color: Option<TextColor>) {
         let x = x.floor() as isize;
         let y = y.floor() as isize;
 
@@ -261,24 +245,30 @@ impl Display {
         // cell.char = (b'0' + (y - 18) as u8) as char;
     }
 
-    fn draw_vertices(&mut self, vertices: &Vec<Point>) {
-        for vertex in vertices {
-            self.project_point(vertex, None);
+    fn draw_vertex(&mut self, point: &Point, color: Option<TextColor>) {
+        if let ViewportPoint::Inside(x, y, z) = self.world_to_viewport(point) {
+            self.set_screen_point(x, y, z, color);
         }
     }
 
-    fn draw_edges(&mut self, vertices: &Vec<Point>, edges: &Vec<Edge>) {
+
+    fn transform_vertices(&mut self, vertices: &Vec<Point>) {
+        for vertex in vertices {
+            self.draw_vertex(vertex, None);
+        }
+    }
+
+    fn transform_edges(&mut self, vertices: &Vec<Point>, edges: &Vec<Edge>) {
         for edge in edges {
             let start = vertices[edge.0].clone();
             let end = vertices[edge.1].clone();
 
             let delta = end.clone() - start.clone();
-            // let delta_unit = delta.clone() / delta.magnitude();
 
             const VERTEX_DENSITY: usize = 100;
             for c in 0..VERTEX_DENSITY {
                 let point = start.clone() + delta.clone() * (c as f64 / VERTEX_DENSITY as f64);
-                self.project_point(&point, edge.2.clone().map(|t| t.into()));
+                self.draw_vertex(&point, edge.2.clone().map(|t| t.into()));
             }
         }
     }
@@ -306,7 +296,7 @@ impl Display {
 
             if bary.0 * bary.1 >= 0.0 && bary.0 * bary.2 >= 0.0 && bary.1 * bary.2 >= 0.0 {
                 let z_new = bary.0 * 1.0 / z1 + bary.1 * 1.0 / z2 + bary.2 * 1.0 / z_new;
-                self.set_viewport_point(x as f64, y as f64, 1.0 / z_new, color);
+                self.set_screen_point(x as f64, y as f64, 1.0 / z_new, color);
             }
         }
     }
@@ -394,38 +384,25 @@ impl Display {
         );
         let z_new = 1.0 / (bary.0 * 1.0 / z1 + bary.1 * 1.0 / z2 + bary.2 * 1.0 / z3);
 
-        // dbg!(y1, y2, y_new);
-
         self.draw_toptriangle(v1, v2, Point(x_new, y_new, z_new), color);
         self.project_bottomtriangle(v3, v2, Point(x_new, y_new, z_new), color);
     }
 
-    fn draw_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
+    fn transform_faces(&mut self, vertices: &Vec<Point>, faces: &Vec<Face>) {
         for face in faces {
-            let vertex1 = vertices.get(face.0).unwrap();
-            let vertex2 = vertices.get(face.1).unwrap();
-            let vertex3 = vertices.get(face.2).unwrap();
+            let v1 = vertices.get(face.0).unwrap();
+            let v2 = vertices.get(face.1).unwrap();
+            let v3 = vertices.get(face.2).unwrap();
 
-            // let v21 = *vertex2 - *vertex1;
-            // let v31 = *vertex3 - *vertex1;
-            // let cross = v31.cross(&v21);
-            // let area_squared = cross.dot(&cross);
-            // dbg!(area_squared);
-            //
-            // if area_squared <  {
-            //     return;
-            // }
-
-            let viewport1 = self.world_to_viewport(vertex1);
-            let viewport2 = self.world_to_viewport(vertex2);
-            let viewport3 = self.world_to_viewport(vertex3);
+            let viewport1 = self.world_to_viewport(v1);
+            let viewport2 = self.world_to_viewport(v2);
+            let viewport3 = self.world_to_viewport(v3);
             match (viewport1, viewport2, viewport3) {
                 (
                     ViewportPoint::Inside(mut x1, mut y1, mut z1),
                     ViewportPoint::Inside(mut x2, mut y2, mut z2),
                     ViewportPoint::Inside(mut x3, mut y3, mut z3),
                 ) => {
-                    // dbg!("inside");
                     if y1 > y2 {
                         std::mem::swap(&mut x2, &mut x1);
                         std::mem::swap(&mut y2, &mut y1);
@@ -441,7 +418,6 @@ impl Display {
                         std::mem::swap(&mut y2, &mut y3);
                         std::mem::swap(&mut z2, &mut z3);
                     }
-                    // dbg!(y1, y2, y3);
                     self.project_triangle(
                         Point(x1, y1, z1),
                         Point(x2, y2, z2),
@@ -454,17 +430,15 @@ impl Display {
         }
     }
 
-    fn project(&mut self, shape: &shapes::Shape) {
-        self.draw_faces(&shape.vertices, &shape.faces);
-        // self.draw_edges(&shape.vertices, &shape.edges);
-        // self.draw_vertices(&shape.vertices);
+    fn world_to_screen(&mut self, shape: &shapes::Shape) {
+        self.transform_faces(&shape.vertices, &shape.faces);
+        self.transform_edges(&shape.vertices, &shape.edges);
+        self.transform_vertices(&shape.vertices);
     }
 
     pub fn clear_screen() {
-        // clear screen
-        print!("\x1B[2J\x1B[1;1H");
-        // hide cursor
-        print!("\x1B[?25l");
+        print!("\x1B[2J\x1B[1;1H"); // clear screen
+        print!("\x1B[?25l"); // hide cursor
     }
 
     fn set_terminal_char(x: usize, y: usize, char: &str) {
@@ -495,7 +469,7 @@ impl Display {
     pub fn render(&mut self, shape: &shapes::Shape) -> Vec<(f32, u32)> {
         const FG: RGB = RGB(254, 0, 0);
         const BG: RGB = RGB(10, 10, 10);
-        self.project(&shape);
+        self.world_to_screen(&shape);
         let mut result = Vec::new();
 
         for Cell { x, y, .. } in self.frame_buffer.iter() {
@@ -516,7 +490,7 @@ impl Display {
     pub fn render_print(&mut self, shape: &shapes::Shape) {
         self.frame_buffer.clear();
         self.z_buffer.clear();
-        self.project(&shape);
+        self.world_to_screen(&shape);
         Self::clear_screen();
         for Cell {
             x,
@@ -540,9 +514,21 @@ impl Display {
     pub fn render_terminal(&mut self, shape: &shapes::Shape) {
         self.frame_buffer.clear();
         self.z_buffer.clear();
-        self.project(&shape);
+        self.world_to_screen(&shape);
         for Cell { x, y, char, color } in self.frame_buffer.iter() {
             Self::set_terminal_char(*x, *y, &Self::colored_string(&char.to_string(), *color));
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::RGB;
+
+    #[test]
+    fn rgb() {
+        let color = RGB(255, 5, 15);
+        assert_eq!(color.to_u32(), 0x00FF050F);
+    }
+}
+

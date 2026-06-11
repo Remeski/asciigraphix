@@ -14,6 +14,7 @@ fn main() {
         DISPLAY_Y,
         Point(0.0, 0.0, 2.0),
         Point(0.0, 0.0, -1.0),
+        Point(0.0, 1.0, 0.0),
         3.14 / 3.0,
     );
     // let shape = Shape::new(

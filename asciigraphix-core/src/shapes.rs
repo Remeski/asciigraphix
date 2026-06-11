@@ -74,7 +74,7 @@ impl Shape {
         let (sin_xrot, cos_xrot) = xrot.sin_cos();
         let (sin_yrot, cos_yrot) = yrot.sin_cos();
         let (sin_zrot, cos_zrot) = zrot.sin_cos();
-        // println!("{}", self.vertices.len());
+
         for v in &mut self.vertices {
             let prev = v.clone() - pivot.clone();
             let mut new = prev.clone();
@@ -94,6 +94,7 @@ impl Shape {
             v.set(new + pivot.clone());
         }
     }
+
     pub fn combine(&self, s2: &Self) -> Self {
         let mut vertices = self.vertices.clone();
         let mut edges = self.edges.clone();
@@ -135,7 +136,7 @@ impl Shape {
         }
     }
 
-    pub fn generate_cube_colorful(center: Point, length: f64) -> Self {
+    pub fn generate_debug_cube(center: Point, length: f64) -> Self {
         let mut shape = Self::generate_cube_filled(center, length);
         let edges = &mut shape.edges;
         let faces = &mut shape.faces;
