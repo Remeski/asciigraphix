@@ -60,7 +60,15 @@ impl<'a> FrameBuffer {
     }
 
     pub fn clear(&mut self) {
-        self.buffer = Self::init_buffer(self.width, self.height);
+        let width = self.width;
+        let height = self.height;
+        for y in 0..height {
+            for x in 0..width {
+                let idx = self.idx(x, y);
+                let c = self.buffer.get_mut(idx).expect("should be inside");
+                c.char = ' '
+            }
+        }
     }
 
     pub const fn idx(&self, x: usize, y: usize) -> usize {
@@ -82,7 +90,7 @@ impl<'a> FrameBuffer {
         self.buffer[idx] = cell;
     }
 
-    pub fn iter(&mut self) -> Iter<'_, Cell> {
+    pub fn iter(&self) -> Iter<'_, Cell> {
         self.buffer.iter()
     }
 }
@@ -97,7 +105,14 @@ impl ZBuffer {
     }
 
     pub fn clear(&mut self) {
-        self.buffer = vec![None; self.width * self.height];
+        let width = self.width;
+        let height = self.height;
+        for y in 0..height {
+            for x in 0..width {
+                let idx = self.idx(x, y);
+                let _ = self.buffer.get_mut(idx).expect("should be inside").take();
+            }
+        }
     }
 
     pub const fn idx(&self, x: usize, y: usize) -> usize {
@@ -135,11 +150,10 @@ pub enum TextColor {
 }
 
 enum ViewportPoint {
-    Inside(f64, f64, f64),
-    Outside(f64, f64, f64),
+    Inside(Point),
+    Outside(Point),
     Behind,
 }
-
 
 pub struct Display {
     width: usize,
@@ -194,15 +208,12 @@ impl Display {
         let x = x + (self.width as f64 / 2.0);
         let y = y + (self.height as f64 / 2.0);
 
-        if (x < 0.0)
-            || (y < 0.0)
-            || (x > self.width as f64 - 1.0)
-            || (y > self.height as f64 - 1.0)
+        if (x < 0.0) || (y < 0.0) || (x > self.width as f64 - 1.0) || (y > self.height as f64 - 1.0)
         {
-            return ViewportPoint::Outside(x, y, z);
+            return ViewportPoint::Outside(Point(x, y, z));
         }
 
-        ViewportPoint::Inside(x, y, z)
+        ViewportPoint::Inside(Point(x, y, z))
     }
 
     fn set_screen_point(&mut self, x: f64, y: f64, z: f64, color: Option<TextColor>) {
@@ -210,7 +221,7 @@ impl Display {
         let y = y.floor() as isize;
 
         if x < 0 || y < 0 || x as usize >= self.width || y as usize >= self.height {
-            return
+            return;
         }
 
         let x = x as usize;
@@ -246,11 +257,10 @@ impl Display {
     }
 
     fn draw_vertex(&mut self, point: &Point, color: Option<TextColor>) {
-        if let ViewportPoint::Inside(x, y, z) = self.world_to_viewport(point) {
+        if let ViewportPoint::Inside(Point(x, y, z)) = self.world_to_viewport(point) {
             self.set_screen_point(x, y, z, color);
         }
     }
-
 
     fn transform_vertices(&mut self, vertices: &Vec<Point>) {
         for vertex in vertices {
@@ -287,7 +297,7 @@ impl Display {
             std::mem::swap(&mut x_start, &mut x_end);
         }
 
-        for x in x_start.floor() as isize..x_end.ceil() as isize {
+        for x in x_start.floor() as isize..(x_end.ceil() + 1.0) as isize {
             let bary = Point(x as f64, y as f64, 0.0).to_barycentric(
                 Point(x1, y1, 0.0),
                 Point(x2, y2, 0.0),
@@ -352,13 +362,29 @@ impl Display {
 
     /// Expects sorted along y-axis (first highest on the screen which means the actual value of y1
     /// is smallest).
-    fn project_triangle(&mut self, v1: Point, v2: Point, v3: Point, color: Option<TextColor>) {
-        let y1y2_close = (v1.1 - v2.1).abs() < 2.0;
-        let y2y3_close = (v2.1 - v3.1).abs() < 2.0;
-        let y1y3_close = (v1.1 - v3.1).abs() < 2.0;
+    fn draw_triangle(
+        &mut self,
+        mut v1: Point,
+        mut v2: Point,
+        mut v3: Point,
+        color: Option<TextColor>,
+    ) {
+        if v1.1 > v2.1 {
+            std::mem::swap(&mut v1, &mut v2);
+        }
+        if v1.1 > v3.1 {
+            std::mem::swap(&mut v1, &mut v3);
+        }
+        if v2.1 > v3.1 {
+            std::mem::swap(&mut v2, &mut v3);
+        }
+
+        let y1y2_close = (v1.1 - v2.1).abs() < 1e-2;
+        let y2y3_close = (v2.1 - v3.1).abs() < 1e-2;
+        let y1y3_close = (v1.1 - v3.1).abs() < 1e-2;
 
         if y1y2_close && y2y3_close && y1y3_close {
-            return
+            return;
         }
 
         if y2y3_close {
@@ -399,31 +425,11 @@ impl Display {
             let viewport3 = self.world_to_viewport(v3);
             match (viewport1, viewport2, viewport3) {
                 (
-                    ViewportPoint::Inside(mut x1, mut y1, mut z1),
-                    ViewportPoint::Inside(mut x2, mut y2, mut z2),
-                    ViewportPoint::Inside(mut x3, mut y3, mut z3),
+                    ViewportPoint::Inside(v1),
+                    ViewportPoint::Inside(v2),
+                    ViewportPoint::Inside(v3),
                 ) => {
-                    if y1 > y2 {
-                        std::mem::swap(&mut x2, &mut x1);
-                        std::mem::swap(&mut y2, &mut y1);
-                        std::mem::swap(&mut z2, &mut z1);
-                    }
-                    if y1 > y3 {
-                        std::mem::swap(&mut x3, &mut x1);
-                        std::mem::swap(&mut y3, &mut y1);
-                        std::mem::swap(&mut z3, &mut z1);
-                    }
-                    if y2 > y3 {
-                        std::mem::swap(&mut x2, &mut x3);
-                        std::mem::swap(&mut y2, &mut y3);
-                        std::mem::swap(&mut z2, &mut z3);
-                    }
-                    self.project_triangle(
-                        Point(x1, y1, z1),
-                        Point(x2, y2, z2),
-                        Point(x3, y3, z3),
-                        face.3.clone().map(|t| t.into()),
-                    );
+                    self.draw_triangle(v1, v2, v3, face.3.clone().map(|t| t.into()));
                 }
                 _ => {}
             }
