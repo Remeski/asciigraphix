@@ -111,16 +111,16 @@ impl Point {
 
     /// Returns barycentric coordinates within triangle with vertices `v1`, `v2`, `v3`.
     pub fn to_barycentric(&self, v1: Point, v2: Point, v3: Point) -> Point {
-        let v21 = v2 - v1;
-        let v31 = v3 - v1;
-        let vp1 = *self - v1;
+        let v12 = v2 - v1;
+        let v13 = v3 - v1;
+        let v1p = *self - v1;
 
-        let v21_inv = 1.0 / v21.dot(&v21);
-        let w = vp1 - v21 * (vp1.dot(&v21) * v21_inv);
-        let v = v31 - v21 * (v31.dot(&v21) * v21_inv);
+        let v21_inv = 1.0 / v12.dot(&v12);
+        let w = v1p - v12 * (v1p.dot(&v12) * v21_inv);
+        let v = v13 - v12 * (v13.dot(&v12) * v21_inv);
 
         let m3 = v.dot(&w) / v.dot(&v);
-        let m2 = (vp1 - v31 * m3).dot(&v21) * v21_inv;
+        let m2 = (v1p - v13 * m3).dot(&v12) * v21_inv;
         let m1 = 1.0 - m2 - m3;
 
         Point(m1, m2, m3)
@@ -220,9 +220,60 @@ impl Point4 {
     }
 }
 
+// 2D: X = u1 + t(u2-u1) = v1 + h(v2-v1)
+// => cross(u1,v2-v1) + t cross(u2-u1, v2-v1) = cross(v1, v2-v1) 
+// => t = cross(v1 - u1, v2 - v1).2/cross(u2-u1, v2-v1).2
+// likewise for h
+//
+// 3D: X = u1 + t(u2-u1) = v1 + h(v2-v1)
+// => u1 - v1 = h(v2-v1) - t(u2-u1) = ((v2-v1)  -(u2-u1)) (h, t)
+// => (h, t) = ((v2-v1)  -(u2-u1))^-1 (u1-v1)
+//          = Q^-1 (u1-v1)
+pub fn line_intersection((u1, u2): (Point, Point), (v1, v2): (Point, Point)) -> Option<Point> {
+    let u = u2 - u1;
+    let v = v2 - v1;
+    let uv = v1 - u1;
+    if u1.2 == 0.0 && u2.2 == 0.0 && v1.2 == 0.0 && v2.2 == 0.0 {
+        let t = uv.cross(&v).2 / u.cross(&v).2;
+        let h = -uv.cross(&u).2 / v.cross(&u).2;
+        if t >= 0.0 && t <= 1.0 && h >= 0.0 && h <= 1.0 {
+            Some(u1 + u * t)
+        } else {
+            None
+        }
+    } else {
+        let q00 = u.dot(&u);
+        let q01 = -u.dot(&v);
+        let q11 = v.dot(&v);
+
+        let u_uv = u.dot(&uv);
+        let v_uv = -v.dot(&uv);
+
+        let det = q00 * q11 - q01 * q01;
+
+        if det.abs() < 1e-3 {
+            return None;
+        }
+
+        let det_inv = 1.0 / det;
+        let h = det_inv * (u_uv * q11 - v_uv * q01);
+        let t = det_inv * (-u_uv * q01 + v_uv * q00);
+
+        dbg!(h, t);
+
+        let u_point = u1 + u * h;
+        let v_point = v1 + v * t;
+        if (u_point - v_point).magnitude() < 1e-3 {
+            Some(u1 + u * h)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::math::Point;
+    use crate::math::{Point, line_intersection};
 
     #[test]
     fn test_barycentric() {
@@ -234,5 +285,19 @@ mod tests {
         assert_eq!(bary, Point(0.5, 0.25, 0.25));
         assert_eq!(bary.0 + bary.1 + bary.2, 1.0);
         assert_eq!(v1 * bary.0 + v2 * bary.1 + v3 * bary.2, p);
+    }
+
+    #[test]
+    fn test_line_intersections() {
+        let v1 = Point(0.0, 0.0, 0.0);
+        let v2 = Point(5.0, 0.5, 0.0);
+
+        let u1 = Point(0.0, -1.0, 0.0);
+        let u2 = Point(5.0, 1.0, 0.0);
+
+        let inter = line_intersection((v1, v2), (u1, u2));
+        dbg!(inter);
+
+        assert!(inter.is_none());
     }
 }
