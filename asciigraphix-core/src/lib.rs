@@ -1,5 +1,6 @@
 use std::slice::Iter;
 
+use rand::RngExt;
 use shapes::Edge;
 
 use crate::{math::Point, shapes::Face};
@@ -239,19 +240,22 @@ impl Display {
         let cell = self.frame_buffer.xy_mut(x, y);
         let color = color.unwrap_or(TextColor::Red);
         // let color = TextColor::Rgb(((1.0 - z.clamp(0.0, 20.0) / 20.0) * 249.0).round() as u8, 0, 0);
-        if z < 10.0 {
-            cell.char = '#';
-            cell.color = color;
-        } else if z < 30.0 {
-            cell.char = '*';
-            cell.color = color;
-        } else if z < 50.0 {
-            cell.char = '-';
-            cell.color = color;
-        } else {
-            cell.char = '.';
-            cell.color = color;
-        }
+        // if z < 10.0 {
+        //     cell.char = '#';
+        //     cell.color = color;
+        // } else if z < 30.0 {
+        //     cell.char = '*';
+        //     cell.color = color;
+        // } else if z < 50.0 {
+        //     cell.char = '-';
+        //     cell.color = color;
+        // } else {
+        //     cell.char = '.';
+        //     cell.color = color;
+        // }
+        cell.char = rand::rng().sample(rand::distr::Alphabetic) as char;
+        // cell.char = '█';
+        cell.color = color;
         // cell.char = (b'0' + (1.0 / z).round().abs() as u8) as char
         // cell.char = (b'0' + (y - 18) as u8) as char;
     }
@@ -438,8 +442,8 @@ impl Display {
 
     fn world_to_screen(&mut self, shape: &shapes::Shape) {
         self.transform_faces(&shape.vertices, &shape.faces);
-        self.transform_edges(&shape.vertices, &shape.edges);
-        self.transform_vertices(&shape.vertices);
+        // self.transform_edges(&shape.vertices, &shape.edges);
+        // self.transform_vertices(&shape.vertices);
     }
 
     pub fn clear_screen() {
@@ -537,4 +541,3 @@ mod tests {
         assert_eq!(color.to_u32(), 0x00FF050F);
     }
 }
-
